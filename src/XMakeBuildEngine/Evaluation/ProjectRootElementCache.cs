@@ -196,11 +196,11 @@ namespace Microsoft.Build.Evaluation
             // Should already have been canonicalized
             ErrorUtilities.VerifyThrowInternalRooted(projectFile);
 
+            ProjectRootElement projectRootElement;
             lock (_locker)
             {
-                ProjectRootElement projectRootElement;
                 _weakCache.TryGetValue(projectFile, out projectRootElement);
-
+            
                 if (projectRootElement != null && _autoReloadFromDisk)
                 {
                     FileInfo fileInfo = FileUtilities.GetFileInfoNoThrow(projectFile);
@@ -245,17 +245,21 @@ namespace Microsoft.Build.Evaluation
                         if (forgetEntry)
                         {
                             ForgetEntry(projectRootElement);
-
                             DebugTraceCache("Out of date dropped from XML cache: ", projectFile);
                             projectRootElement = null;
                         }
                     }
                 }
 
-                if (projectRootElement == null && openProjectRootElement != null)
+                // do the expensive I/O outside the lock.
+                bool initialProjectElementCheck = projectRootElement == null && openProjectRootElement != null;
+                if (initialProjectElementCheck)
                 {
                     projectRootElement = openProjectRootElement(projectFile, this);
-
+                }
+            
+                if (initialProjectElementCheck)
+                { 
                     ErrorUtilities.VerifyThrowInternalNull(projectRootElement, "projectRootElement");
                     ErrorUtilities.VerifyThrow(projectRootElement.FullPath == projectFile, "Got project back with incorrect path");
                     ErrorUtilities.VerifyThrow(_weakCache.Contains(projectFile), "Open should have renamed into cache and boosted");
@@ -271,9 +275,9 @@ namespace Microsoft.Build.Evaluation
                 {
                     projectRootElement.MarkAsExplicitlyLoaded();
                 }
-
-                return projectRootElement;
             }
+
+            return projectRootElement;
         }
 
         /// <summary>
