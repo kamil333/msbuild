@@ -408,7 +408,7 @@ namespace Microsoft.Build.Evaluation
 
                 for (int i=0; ; i++)
                 {
-                    fullFileName = Path.Combine(folder, fileName + ".evalperf" + i.ToString() + ".txt");
+                    fullFileName = Path.Combine(folder, fileName + ".evalperf" + i.ToString() + ".csv");
                     if (!File.Exists(fullFileName))
                     {
                         break;
@@ -424,12 +424,12 @@ namespace Microsoft.Build.Evaluation
                 using (var fs = File.OpenWrite(fullFileName))
                 using (var sw = new StreamWriter(fs))
                 {
-                    sw.WriteLine("Evaluation Pass\tFile\tLine Number\tElement Name\tInclusive ms\tExclusive ms");
+                    sw.WriteLine("Evaluation Pass,File,Line Number,Element Name,Inclusive m,tExclusive ms");
                     foreach (var location in orderedLocations)
                     {
                         var time = evaluator._evaluationPerformanceCounter.TimeSpent[location];
 
-                        sw.WriteLine(string.Join("\t",
+                        sw.WriteLine(string.Join(",",
                             location.EvaluationPass ?? string.Empty,
                             location.File ?? string.Empty,
                             location.Line?.ToString() ?? string.Empty,

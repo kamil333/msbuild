@@ -17,13 +17,19 @@ namespace Microsoft.Build.Evaluation
             public readonly string File;
             public readonly int? Line;
             public readonly string ElementName;
+            private readonly string ElementContents;
 
-            private EvaluationLocation(string evaluationPass, string file, int? line, string elementName)
+            private EvaluationLocation(string evaluationPass, string file, int? line, string elementName) : this(evaluationPass, file, line, elementName, string.Empty)
+            {
+            }
+
+            private EvaluationLocation(string evaluationPass, string file, int? line, string elementName, string elementContents)
             {
                 EvaluationPass = evaluationPass;
                 File = file;
                 Line = line;
                 ElementName = elementName;
+                this.ElementContents = elementContents;
             }
 
             public EvaluationLocation WithEvaluationPass(string evaluationPass)
@@ -46,6 +52,11 @@ namespace Microsoft.Build.Evaluation
                 return new EvaluationLocation(this.EvaluationPass, this.File, this.Line, elementName);
             }
 
+            public EvaluationLocation WithElementContents(string elementContents)
+            {
+                return new EvaluationLocation(this.EvaluationPass, this.File, this.Line, elementContents);
+            }
+
             public override bool Equals(object obj)
             {
                 if (obj is EvaluationLocation other)
@@ -53,7 +64,8 @@ namespace Microsoft.Build.Evaluation
                     return EvaluationPass == other.EvaluationPass &&
                         File == other.File &&
                         Line == other.Line &&
-                        ElementName == other.ElementName;
+                        ElementName == other.ElementName &&
+                        ElementContents == other.ElementContents;
                 }
                 return false;
             }
@@ -66,6 +78,7 @@ namespace Microsoft.Build.Evaluation
                 hashCode = hashCode * -1521134295 + EqualityComparer<string>.Default.GetHashCode(File);
                 hashCode = hashCode * -1521134295 + EqualityComparer<int?>.Default.GetHashCode(Line);
                 hashCode = hashCode * -1521134295 + EqualityComparer<string>.Default.GetHashCode(ElementName);
+                hashCode = hashCode * -1521134295 + EqualityComparer<string>.Default.GetHashCode(ElementContents);
                 return hashCode;
             }
 
@@ -117,7 +130,8 @@ namespace Microsoft.Build.Evaluation
             return new EvaluationFrame(this, CurrentLocation
                                                 .WithFile(element.Location.File)
                                                 .WithLine(element.Location.Line)
-                                                .WithElementName(element.ElementName));
+                                                .WithElementName(element.ElementName)
+                                                .WithElementContents(element.XmlElement.OuterXml));
         }
 
         public IDisposable TrackLocation(IElementLocation location)
