@@ -2156,6 +2156,7 @@ namespace Microsoft.Build.Tasks
                     AssemblyNameReference[] autoUnifiedRemappedAssemblyReferences = null;
                     if (AutoUnify && FindDependencies)
                     {
+                        var timer = Stopwatch.StartNew();
                         // Compute all dependencies.
                         dependencyTable.ComputeClosure
                         (
@@ -2194,9 +2195,15 @@ namespace Microsoft.Build.Tasks
                             out autoUnifiedRemappedAssemblies,
                             out autoUnifiedRemappedAssemblyReferences
                         );
+
+                        timer.Stop();
+
+                        Console.WriteLine($"First run: {timer.ElapsedMilliseconds}");
                     }
 
                     DependentAssembly[] allRemappedAssemblies = CombineRemappedAssemblies(appConfigRemappedAssemblies, autoUnifiedRemappedAssemblies);
+
+                    var timer2 = Stopwatch.StartNew();
 
                     // Compute all dependencies.
                     dependencyTable.ComputeClosure(allRemappedAssemblies, _assemblyFiles, _assemblyNames, generalResolutionExceptions);
@@ -2229,6 +2236,9 @@ namespace Microsoft.Build.Tasks
                         out idealAssemblyRemappings,
                         out idealAssemblyRemappingsIdentities
                     );
+                        timer2.Stop();
+
+                        Console.WriteLine($"Second run: {timer2.ElapsedMilliseconds}");
 
                     // Build the output tables.
                     dependencyTable.GetReferenceItems
@@ -2936,7 +2946,9 @@ namespace Microsoft.Build.Tasks
         /// <returns>True if there was success.</returns>
         override public bool Execute()
         {
-            return Execute
+            var timer = Stopwatch.StartNew();
+
+            var result =  Execute
             (
                 new FileExists(FileUtilities.FileExistsNoThrow),
                 new DirectoryExists(FileUtilities.DirectoryExistsNoThrow),
@@ -2956,6 +2968,12 @@ namespace Microsoft.Build.Tasks
                 new IsWinMDFile(AssemblyInformation.IsWinMDFile),
                 new ReadMachineTypeFromPEHeader(ReferenceTable.ReadMachineTypeFromPEHeader)
             );
+
+            timer.Stop();
+
+            Console.WriteLine($"RAR: {timer.ElapsedMilliseconds}");
+
+            return result;
         }
 
         #endregion
