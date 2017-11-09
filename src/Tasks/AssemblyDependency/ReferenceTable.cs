@@ -1696,7 +1696,7 @@ namespace Microsoft.Build.Tasks
             {
                 // If the reference is resolved, but dependencies haven't been found,
                 // then find dependencies.
-                if (reference.IsResolved && !reference.DependenciesFound)
+                if (reference.IsResolved && !reference.DependenciesFound && !FromNuget(reference))
                 {
                     // Set this reference to 'resolved' so it won't be processed the next time.
                     reference.DependenciesFound = true;
@@ -1771,6 +1771,18 @@ namespace Microsoft.Build.Tasks
             }
 
             return newDependencies;
+        }
+
+        private static bool SkipNugetReferences = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SKIPNUGETREFERENCES"));
+
+        private static bool FromNuget(Reference reference)
+        {
+            if (!SkipNugetReferences)
+            {
+                return false;
+            }
+
+            return !string.IsNullOrEmpty(reference.PrimarySourceItem?.GetMetadata("PackageName"));
         }
 
         /// <summary>
