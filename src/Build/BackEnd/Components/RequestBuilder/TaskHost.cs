@@ -130,6 +130,8 @@ namespace Microsoft.Build.BackEnd
             _callbackMonitor = new Object();
         }
 
+        public string ProjectFullPath => _requestEntry.RequestConfiguration.ProjectFullPath;
+
         /// <summary>
         /// Returns true in the multiproc case
         /// </summary>

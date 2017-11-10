@@ -7,6 +7,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.Versioning;
 
@@ -1604,25 +1605,23 @@ namespace Microsoft.Build.Tasks
             }
         }
 
-        /// <summary>
-        /// Searches the table for references that haven't been resolved to their full file names and
-        /// for dependencies that haven't yet been found.
-        ///
-        /// If any are found, they're resolved and then dependencies are found. Then the process is repeated 
-        /// until nothing is left unresolved.
-        /// </summary>
-        /// <param name="remappedAssemblies">The table of remapped assemblies.</param>
+        ///  <summary>
+        ///  Searches the table for references that haven't been resolved to their full file names and
+        ///  for dependencies that haven't yet been found.
+        /// 
+        ///  If any are found, they're resolved and then dependencies are found. Then the process is repeated 
+        ///  until nothing is left unresolved.
+        ///  </summary>
+        /// <param name="remappedAssembliesValue"></param>
         /// <param name="referenceAssemblyFiles">The task items which contain file names to add.</param>
         /// <param name="referenceAssemblyNames">The task items which contain fusion names to add.</param>
         /// <param name="exceptions">Errors encountered while computing closure.</param>
+        /// <param name="runInfo"></param>
+        /// <param name="remappedAssemblies">The table of remapped assemblies.</param>
         internal void ComputeClosure
-        (
-            DependentAssembly[] remappedAssembliesValue,
-            ITaskItem[] referenceAssemblyFiles,
-            ITaskItem[] referenceAssemblyNames,
-            ArrayList exceptions
-        )
+        (DependentAssembly[] remappedAssembliesValue, ITaskItem[] referenceAssemblyFiles, ITaskItem[] referenceAssemblyNames, ArrayList exceptions, ResolveAssemblyReference.RunInfo runInfo)
         {
+            _runInfo = runInfo;
 #if (!STANDALONEBUILD)
             using (new CodeMarkerStartEnd(CodeMarkerEvent.perfMSBuildRARComputeClosureBegin, CodeMarkerEvent.perfMSBuildRARComputeClosureEnd))
 #endif
@@ -1661,6 +1660,7 @@ namespace Microsoft.Build.Tasks
                     ErrorUtilities.VerifyThrow(dependencyIterations < maxIterations, "Maximum iterations exceeded while looking for dependencies.");
                 } while (moreDependencies);
 
+                _runInfo.innerLoopCount = dependencyIterations;
 
                 // If everything is either resolved or unresolvable, then we can quit.
                 // Otherwise, loop again.
@@ -1680,6 +1680,20 @@ namespace Microsoft.Build.Tasks
                 ++moreResolvableIterations;
                 ErrorUtilities.VerifyThrow(moreResolvableIterations < maxIterations, "Maximum iterations exceeded while looking for resolvable references.");
             } while (moreResolvable);
+
+            _runInfo.UnresolvableReferences = _references.Keys.Where(
+                    k => _references[k].IsUnresolvable)
+                .Select(
+                    k => Tuple.Create(
+                        k.FullName,
+                        string.Join(
+                            ",",
+                            _references[k]
+                                .GetDependees()
+                                .Cast<Reference>()
+                                .Select(r => r.FullPath)))).ToList();
+
+            _runInfo.outerLoopCount = moreResolvableIterations;
         }
 
         /// <summary>
@@ -1774,6 +1788,7 @@ namespace Microsoft.Build.Tasks
         }
 
         private static bool SkipNugetReferences = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SKIPNUGETREFERENCES"));
+        private ResolveAssemblyReference.RunInfo _runInfo;
 
         private static bool FromNuget(Reference reference)
         {

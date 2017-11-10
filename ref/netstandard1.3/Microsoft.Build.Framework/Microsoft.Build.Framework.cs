@@ -189,6 +189,7 @@ namespace Microsoft.Build.Framework
     }
     public partial interface IBuildEngine5 : Microsoft.Build.Framework.IBuildEngine, Microsoft.Build.Framework.IBuildEngine2, Microsoft.Build.Framework.IBuildEngine3, Microsoft.Build.Framework.IBuildEngine4
     {
+        string ProjectFullPath { get; }
         void LogTelemetry(string eventName, System.Collections.Generic.IDictionary<string, string> properties);
     }
     public partial interface ICancelableTask : Microsoft.Build.Framework.ITask

@@ -10,7 +10,7 @@ using System.Reflection;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-
+using System.Linq;
 using Microsoft.Build.Framework;
 using Microsoft.Build.Shared;
 using Microsoft.Build.Utilities;
@@ -1915,6 +1915,8 @@ namespace Microsoft.Build.Tasks
             {
                 try
                 {
+                    var rarTimer = Stopwatch.StartNew();
+
                     FrameworkNameVersioning frameworkMoniker = null;
                     if (!String.IsNullOrEmpty(_targetedFrameworkMoniker))
                     {
@@ -2154,9 +2156,14 @@ namespace Microsoft.Build.Tasks
 
                     DependentAssembly[] autoUnifiedRemappedAssemblies = null;
                     AssemblyNameReference[] autoUnifiedRemappedAssemblyReferences = null;
+
+                    var firstRunInfo = new RunInfo();
+
                     if (AutoUnify && FindDependencies)
                     {
-                        var timer = Stopwatch.StartNew();
+                        firstRunInfo.Timer = Stopwatch.StartNew();
+                        firstRunInfo.Executed = true;
+
                         // Compute all dependencies.
                         dependencyTable.ComputeClosure
                         (
@@ -2165,7 +2172,8 @@ namespace Microsoft.Build.Tasks
                             appConfigRemappedAssemblies,
                             _assemblyFiles,
                             _assemblyNames,
-                            generalResolutionExceptions
+                            generalResolutionExceptions,
+                            firstRunInfo
                         );
 
                         try
@@ -2196,17 +2204,18 @@ namespace Microsoft.Build.Tasks
                             out autoUnifiedRemappedAssemblyReferences
                         );
 
-                        timer.Stop();
-
-                        Console.WriteLine($"First run: {timer.ElapsedMilliseconds}");
+                        firstRunInfo.Timer.Stop();
                     }
 
                     DependentAssembly[] allRemappedAssemblies = CombineRemappedAssemblies(appConfigRemappedAssemblies, autoUnifiedRemappedAssemblies);
 
-                    var timer2 = Stopwatch.StartNew();
+
+                    var secondRunInfo = new RunInfo();
+                    secondRunInfo.Timer = Stopwatch.StartNew();
+                    secondRunInfo.Executed = true;
 
                     // Compute all dependencies.
-                    dependencyTable.ComputeClosure(allRemappedAssemblies, _assemblyFiles, _assemblyNames, generalResolutionExceptions);
+                    dependencyTable.ComputeClosure(allRemappedAssemblies, _assemblyFiles, _assemblyNames, generalResolutionExceptions, secondRunInfo);
 
                     try
                     {
@@ -2236,9 +2245,8 @@ namespace Microsoft.Build.Tasks
                         out idealAssemblyRemappings,
                         out idealAssemblyRemappingsIdentities
                     );
-                        timer2.Stop();
 
-                        Console.WriteLine($"Second run: {timer2.ElapsedMilliseconds}");
+                    secondRunInfo.Timer.Stop();
 
                     // Build the output tables.
                     dependencyTable.GetReferenceItems
@@ -2386,6 +2394,11 @@ namespace Microsoft.Build.Tasks
                             }
                         }
                     }
+
+                    rarTimer.Stop();
+
+                    LogInfo(BuildEngine5.ProjectFullPath, rarTimer, firstRunInfo, secondRunInfo, dependencyTable);
+
                     return success && !Log.HasLoggedErrors;
                 }
                 catch (ArgumentException e)
@@ -2403,6 +2416,99 @@ namespace Microsoft.Build.Tasks
             }
 
             return success && !Log.HasLoggedErrors;
+        }
+
+        private static string logFile = Environment.GetEnvironmentVariable("RARLOG") ?? Path.Combine(Path.GetDirectoryName(FileUtilities.ExecutingAssemblyPath), "RARLogs", "rar.csv");
+
+        internal class RunInfo
+        {
+            public Stopwatch Timer;
+            public int innerLoopCount;
+            public int outerLoopCount;
+            public List<Tuple<string, string>> UnresolvableReferences = new List<Tuple<string, string>>();
+
+            public bool Executed { get; set; }
+
+            public Dictionary<string, string> Data(string namePrefix = "")
+            {
+                return new Dictionary<string, string>()
+                {
+                    { $"{namePrefix}{nameof(Executed)}", Executed.ToString() },
+                    { $"{namePrefix}Time(ms)", Timer?.ElapsedMilliseconds.ToString() ?? string.Empty },
+                    { $"{namePrefix}{nameof(innerLoopCount)}", innerLoopCount.ToString()},
+                    { $"{namePrefix}{nameof(outerLoopCount)}", outerLoopCount.ToString()},
+                    { $"{namePrefix}{nameof(UnresolvableReferences)}", UnresolvableReferences.Count.ToString()},
+                };
+            }
+        }
+
+        private static void LogInfo(string projectFile, Stopwatch rarTimer, RunInfo firstRun, RunInfo secondRun, ReferenceTable dependencyTable)
+        {
+            Console.WriteLine($"Project: {projectFile}");
+            Console.WriteLine($"References: {dependencyTable.References.Count}");
+            Console.WriteLine($"First run: {firstRun.Timer.ElapsedMilliseconds}");
+            Console.WriteLine($"First unresolved references: {firstRun.UnresolvableReferences.Count}");
+            Console.WriteLine($"Second run: {secondRun.Timer.ElapsedMilliseconds}");
+            Console.WriteLine($"Second unresolved references: {secondRun.UnresolvableReferences.Count}");
+            Console.WriteLine($"RAR: {rarTimer.ElapsedMilliseconds}");
+
+            var separator = ",";
+
+            var firstRunData = firstRun.Data("first");
+            var secondRunData = secondRun.Data("second");
+
+            if (!File.Exists(logFile))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(logFile));
+                File.WriteAllText(
+                    logFile,
+                    string.Join(
+                        separator,
+                        new[] {"projectFile", "references", "RARTime(ms)"}
+                            .Concat(firstRunData.Keys)
+                            .Concat(secondRunData.Keys))
+                    + "\n");
+            }
+
+            File.AppendAllText(
+                logFile,
+                string.Join(
+                    separator,
+                    new[] {projectFile, dependencyTable.References.Count.ToString(), rarTimer.ElapsedMilliseconds.ToString()}
+                        .Concat(firstRunData.Values)
+                        .Concat(secondRunData.Values))
+                + "\n \n");
+
+            var unresolvableReferencesLogFile = Path.Combine(Path.GetDirectoryName(logFile), $"{Path.GetFileNameWithoutExtension(logFile)}-unresolvedReferences");
+            using (var stream = File.AppendText(unresolvableReferencesLogFile))
+            {
+                if (firstRun.UnresolvableReferences.Any() || secondRun.UnresolvableReferences.Any())
+                {
+                    stream.WriteLine(projectFile);
+
+                    if (firstRun.UnresolvableReferences.Any())
+                    {
+                        stream.WriteLine("firstRun");
+
+                        foreach (var reference in firstRun.UnresolvableReferences)
+                        {
+                            stream.WriteLine($"\t{reference.Item1} : {reference.Item2}");
+                        }
+                    }
+
+                    if (secondRun.UnresolvableReferences.Any())
+                    {
+                        stream.WriteLine("secondRun");
+
+                        foreach (var reference in secondRun.UnresolvableReferences)
+                        {
+                            stream.WriteLine($"\t{reference.Item1} : {reference.Item2}");
+                        }
+                    }
+
+                    stream.WriteLine("=================================================");
+                }
+            }
         }
 
         /// <summary>
@@ -2946,9 +3052,7 @@ namespace Microsoft.Build.Tasks
         /// <returns>True if there was success.</returns>
         override public bool Execute()
         {
-            var timer = Stopwatch.StartNew();
-
-            var result =  Execute
+            return Execute
             (
                 new FileExists(FileUtilities.FileExistsNoThrow),
                 new DirectoryExists(FileUtilities.DirectoryExistsNoThrow),
@@ -2968,12 +3072,6 @@ namespace Microsoft.Build.Tasks
                 new IsWinMDFile(AssemblyInformation.IsWinMDFile),
                 new ReadMachineTypeFromPEHeader(ReferenceTable.ReadMachineTypeFromPEHeader)
             );
-
-            timer.Stop();
-
-            Console.WriteLine($"RAR: {timer.ElapsedMilliseconds}");
-
-            return result;
         }
 
         #endregion

@@ -16,5 +16,7 @@ namespace Microsoft.Build.Framework
         /// <param name="eventName">The event name.</param>
         /// <param name="properties">The event properties.</param>
         void LogTelemetry(string eventName, IDictionary<string, string> properties);
+
+        string ProjectFullPath { get; }
     }
 }

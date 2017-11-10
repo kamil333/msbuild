@@ -155,6 +155,8 @@ namespace Microsoft.Build.UnitTests
             _log.AppendLine(message);
         }
 
+        public string ProjectFullPath{ get; }
+
         public bool ContinueOnError
         {
             get

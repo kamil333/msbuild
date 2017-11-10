@@ -459,6 +459,8 @@ namespace Microsoft.Build.CommandLine
             });
         }
 
+        public string ProjectFullPath { get; }
+
         #endregion
 
 #endif
