@@ -1696,6 +1696,8 @@ namespace Microsoft.Build.Tasks
             _runInfo.outerLoopCount = moreResolvableIterations;
         }
 
+        public bool AtLeastOneReferenceFromNugetFound;
+
         /// <summary>
         /// Find associates for references that we haven't found associates for before.
         /// Returns true if new dependent assemblies were found.
@@ -1710,8 +1712,14 @@ namespace Microsoft.Build.Tasks
             {
                 // If the reference is resolved, but dependencies haven't been found,
                 // then find dependencies.
-                if (reference.IsResolved && !reference.DependenciesFound && !FromNuget(reference))
+                if (reference.IsResolved && !reference.DependenciesFound)
                 {
+                    if (reference.FromNuget())
+                    {
+                        AtLeastOneReferenceFromNugetFound = true;
+                        continue;
+                    }
+
                     // Set this reference to 'resolved' so it won't be processed the next time.
                     reference.DependenciesFound = true;
 
@@ -1787,19 +1795,7 @@ namespace Microsoft.Build.Tasks
             return newDependencies;
         }
 
-        private static bool SkipNugetReferences = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SKIPNUGETREFERENCES"));
         private ResolveAssemblyReference.RunInfo _runInfo;
-
-        private static bool FromNuget(Reference reference)
-        {
-            if (!SkipNugetReferences)
-            {
-                return false;
-            }
-
-            return !string.IsNullOrEmpty(reference.PrimarySourceItem?.GetMetadata("PackageName")) ||
-                   !string.IsNullOrEmpty(reference.PrimarySourceItem?.GetMetadata("NuGetPackageId"));
-        }
 
         /// <summary>
         /// Resolve all references that have not been resolved yet to real files on disk.

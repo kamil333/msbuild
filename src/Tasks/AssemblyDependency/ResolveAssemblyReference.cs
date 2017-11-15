@@ -2290,11 +2290,16 @@ namespace Microsoft.Build.Tasks
                     }
 
 
-                    if ((!useSystemRuntime || !useNetStandard) && !FindDependencies)
+                    if ((!useSystemRuntime || !useNetStandard) && (!FindDependencies || dependencyTable.AtLeastOneReferenceFromNugetFound))
                     {
                         // when we are not producing the dependency graph look for direct dependencies of primary references.
                         foreach (var resolvedReference in dependencyTable.References.Values)
                         {
+                            if (FindDependencies && !resolvedReference.FromNuget())
+                            {
+                                continue;
+                            }
+
                             var rawDependencies = GetDependencies(resolvedReference, fileExists, getAssemblyMetadata, assemblyMetadataCache);
                             if (rawDependencies != null)
                             {

@@ -1071,6 +1071,19 @@ namespace Microsoft.Build.Tasks
             AddDependee(sourceReference);
         }
 
+        private static bool SkipNugetReferences = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SKIPNUGETREFERENCES"));
+
+        public bool FromNuget()
+        {
+            if (!SkipNugetReferences)
+            {
+                return false;
+            }
+
+            return !string.IsNullOrEmpty(PrimarySourceItem?.GetMetadata("PackageName")) ||
+                   !string.IsNullOrEmpty(PrimarySourceItem?.GetMetadata("NuGetPackageId"));
+        }
+
         /// <summary>
         /// Make this reference a primary assembly reference. 
         /// This is a refrence that is an assembly and is primary.
