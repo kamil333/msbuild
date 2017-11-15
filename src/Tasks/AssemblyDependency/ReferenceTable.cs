@@ -1696,6 +1696,8 @@ namespace Microsoft.Build.Tasks
             _runInfo.outerLoopCount = moreResolvableIterations;
         }
 
+        private static bool BreakEarly = string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DoNotBreakEarly"));
+
         public bool AtLeastOneReferenceFromNugetFound;
 
         /// <summary>
@@ -1771,7 +1773,7 @@ namespace Microsoft.Build.Tasks
 
 
                             // If something was found, then break out and start fresh.
-                            if (newEntries.Count > 0)
+                            if (newEntries.Count > 0 && BreakEarly)
                             {
                                 break;
                             }

@@ -32,6 +32,17 @@ call :FFBuild %project%
 set RARLOG=%RARLogs%\SkipCore.csv
 call :CoreBuild %project%
 
+set DoNotBreakEarly=1
+
+echo ====== DoNotBreakEarly =====
+echo .
+
+set RARLOG=%RARLogs%\BreakEarlyFF.csv
+call :FFBuild %project%
+set RARLOG=%RARLogs%\BreakEarlyCore.csv
+call :CoreBuild %project%
+
+
 goto :eof
 
 :FFBuild
