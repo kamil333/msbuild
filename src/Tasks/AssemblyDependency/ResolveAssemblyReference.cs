@@ -2446,7 +2446,7 @@ namespace Microsoft.Build.Tasks
         {
             Console.WriteLine($"Project: {projectFile}");
             Console.WriteLine($"References: {dependencyTable.References.Count}");
-            Console.WriteLine($"First run: {firstRun.Timer.ElapsedMilliseconds}");
+            Console.WriteLine($"First run: {firstRun.Timer?.ElapsedMilliseconds}");
             Console.WriteLine($"First unresolved references: {firstRun.UnresolvableReferences.Count}");
             Console.WriteLine($"Second run: {secondRun.Timer.ElapsedMilliseconds}");
             Console.WriteLine($"Second unresolved references: {secondRun.UnresolvableReferences.Count}");
