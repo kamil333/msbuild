@@ -1797,7 +1797,8 @@ namespace Microsoft.Build.Tasks
                 return false;
             }
 
-            return !string.IsNullOrEmpty(reference.PrimarySourceItem?.GetMetadata("PackageName"));
+            return !string.IsNullOrEmpty(reference.PrimarySourceItem?.GetMetadata("PackageName")) ||
+                   !string.IsNullOrEmpty(reference.PrimarySourceItem?.GetMetadata("NuGetPackageId"));
         }
 
         /// <summary>
