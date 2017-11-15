@@ -3,7 +3,7 @@ setlocal enabledelayedexpansion
 
 set project=%1
 
-call cibuild.cmd --target All --scope Compile --bootstrap-only
+call cibuild.cmd --target All --scope Compile --bootstrap-only --config Release
 
 robocopy bin\Bootstrap\MSBuild\15.0 bin\Bootstrap-NetCore\15.0 /MIR
 
