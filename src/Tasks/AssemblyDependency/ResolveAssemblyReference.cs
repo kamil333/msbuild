@@ -1875,6 +1875,8 @@ namespace Microsoft.Build.Tasks
         #endregion
         #region ITask Members
 
+        private static bool RunSecondClosure = string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SkipSecondClosureComputation"));
+
         /// <summary>
         /// Execute the task.
         /// </summary>
@@ -2209,44 +2211,47 @@ namespace Microsoft.Build.Tasks
 
                     DependentAssembly[] allRemappedAssemblies = CombineRemappedAssemblies(appConfigRemappedAssemblies, autoUnifiedRemappedAssemblies);
 
+                    DependentAssembly[] idealAssemblyRemappings = autoUnifiedRemappedAssemblies;
+                    AssemblyNameReference[] idealAssemblyRemappingsIdentities = autoUnifiedRemappedAssemblyReferences;
+
 
                     var secondRunInfo = new RunInfo();
-                    secondRunInfo.Timer = Stopwatch.StartNew();
-                    secondRunInfo.Executed = true;
-
-                    // Compute all dependencies.
-                    dependencyTable.ComputeClosure(allRemappedAssemblies, _assemblyFiles, _assemblyNames, generalResolutionExceptions, secondRunInfo);
-
-                    try
+                    if (RunSecondClosure || (allRemappedAssemblies != null && allRemappedAssemblies.Length > 0))
                     {
-                        excludedReferencesExist = false;
-                        if (redistList != null && redistList.Count > 0)
+                        secondRunInfo.Timer = Stopwatch.StartNew();
+                        secondRunInfo.Executed = true;
+
+                        // Compute all dependencies.
+                        dependencyTable.ComputeClosure(allRemappedAssemblies, _assemblyFiles, _assemblyNames, generalResolutionExceptions, secondRunInfo);
+
+                        try
                         {
-                            excludedReferencesExist = dependencyTable.MarkReferencesForExclusion(blackList);
+                            excludedReferencesExist = false;
+                            if (redistList != null && redistList.Count > 0)
+                            {
+                                excludedReferencesExist = dependencyTable.MarkReferencesForExclusion(blackList);
+                            }
                         }
+                        catch (InvalidOperationException e)
+                        {
+                            Log.LogErrorWithCodeFromResources("ResolveAssemblyReference.ProblemDeterminingFrameworkMembership", e.Message);
+                            return false;
+                        }
+
+                        if (excludedReferencesExist)
+                        {
+                            dependencyTable.RemoveReferencesMarkedForExclusion(false /* Remove the reference and warn*/, subsetOrProfileName);
+                        }
+
+                        // Resolve any conflicts.
+                        dependencyTable.ResolveConflicts
+                        (
+                            out idealAssemblyRemappings,
+                            out idealAssemblyRemappingsIdentities
+                        );
+
+                        secondRunInfo.Timer.Stop();
                     }
-                    catch (InvalidOperationException e)
-                    {
-                        Log.LogErrorWithCodeFromResources("ResolveAssemblyReference.ProblemDeterminingFrameworkMembership", e.Message);
-                        return false;
-                    }
-
-                    if (excludedReferencesExist)
-                    {
-                        dependencyTable.RemoveReferencesMarkedForExclusion(false /* Remove the reference and warn*/, subsetOrProfileName);
-                    }
-
-                    // Resolve any conflicts.
-                    DependentAssembly[] idealAssemblyRemappings = null;
-                    AssemblyNameReference[] idealAssemblyRemappingsIdentities = null;
-
-                    dependencyTable.ResolveConflicts
-                    (
-                        out idealAssemblyRemappings,
-                        out idealAssemblyRemappingsIdentities
-                    );
-
-                    secondRunInfo.Timer.Stop();
 
                     // Build the output tables.
                     dependencyTable.GetReferenceItems
@@ -2453,7 +2458,7 @@ namespace Microsoft.Build.Tasks
             Console.WriteLine($"References: {dependencyTable.References.Count}");
             Console.WriteLine($"First run: {firstRun.Timer?.ElapsedMilliseconds}");
             Console.WriteLine($"First unresolved references: {firstRun.UnresolvableReferences.Count}");
-            Console.WriteLine($"Second run: {secondRun.Timer.ElapsedMilliseconds}");
+            Console.WriteLine($"Second run: {secondRun.Timer?.ElapsedMilliseconds}");
             Console.WriteLine($"Second unresolved references: {secondRun.UnresolvableReferences.Count}");
             Console.WriteLine($"RAR: {rarTimer.ElapsedMilliseconds}");
 

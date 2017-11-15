@@ -13,33 +13,44 @@ set RARLogs=%~dp0\RARLogs
 
 rd /s /q RARLogs
 
-set SKIPNUGETREFERENCES=
-
 echo ====== Do not skip nuget references =====
+echo .
+
+set SKIPNUGETREFERENCES=
 
 set RARLOG=%RARLogs%\NoSkipFF.csv
 call :FFBuild %project%
 set RARLOG=%RARLogs%\NoSkipCore.csv
 call :CoreBuild %project%
 
-set SKIPNUGETREFERENCES=1
-
 echo ====== Skip nuget refernces =====
 echo .
 
-set RARLOG=%RARLogs%\SkipFF.csv
-call :FFBuild %project%
-set RARLOG=%RARLogs%\SkipCore.csv
-call :CoreBuild %project%
+set SKIPNUGETREFERENCES=1
 
-set DoNotBreakEarly=1
+set RARLOG=%RARLogs%\SkipNugetsFF.csv
+call :FFBuild %project%
+set RARLOG=%RARLogs%\SkipNugetsCore.csv
+call :CoreBuild %project%
 
 echo ====== DoNotBreakEarly =====
 echo .
 
+set DoNotBreakEarly=1
+
 set RARLOG=%RARLogs%\BreakEarlyFF.csv
 call :FFBuild %project%
 set RARLOG=%RARLogs%\BreakEarlyCore.csv
+call :CoreBuild %project%
+
+echo ====== SkipSecondClosureComputation =====
+echo .
+
+set SkipSecondClosureComputation=1
+
+set RARLOG=%RARLogs%\SkipClosureFF.csv
+call :FFBuild %project%
+set RARLOG=%RARLogs%\SkipClosureCore.csv
 call :CoreBuild %project%
 
 
