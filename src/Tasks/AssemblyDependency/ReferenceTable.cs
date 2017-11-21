@@ -5,6 +5,7 @@ using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -377,6 +378,41 @@ namespace Microsoft.Build.Tasks
             _references[assemblyName] = reference;
         }
 
+        // todo this contains duplicated logic from FindDependenciesAndScatterFiles and AddReference. FindDependenciesAndScatterFiles should use AddReference and compute existingReference both from _references and the new entries
+        /// <summary>
+        /// Adds a reference to the table.
+        /// </summary>
+        /// <param name="assemblyName">The assembly name to be used as a key.</param>
+        /// <param name="reference">The reference to add.</param>
+        internal void AddReferenceSpecial(AssemblyNameExtension assemblyName, Reference reference)
+        {
+            ErrorUtilities.VerifyThrow(assemblyName.Name != null, "Got an empty assembly name.");
+            if (_references.ContainsKey(assemblyName))
+            {
+                Reference referenceGoingToBeReplaced = _references[assemblyName];
+                foreach (AssemblyRemapping pair in referenceGoingToBeReplaced.RemappedAssemblyNames())
+                {
+                    reference.AddRemapping(pair.From, pair.To);
+                }
+
+                reference.AddSourceItems(referenceGoingToBeReplaced.GetSourceItems());
+
+                foreach (Reference dependee in referenceGoingToBeReplaced.GetDependees())
+                {
+                    reference.AddDependee(dependee);
+                }
+
+                foreach (var unification in referenceGoingToBeReplaced.GetPreUnificationVersions())
+                {
+                    reference.AddPreUnificationVersion(unification.referenceFullPath, unification.version, unification.reason);
+                }
+
+                reference.IsPrerequisite = referenceGoingToBeReplaced.IsPrerequisite;
+            }
+
+            _references[assemblyName] = reference;
+        }
+
 
         /// <summary>
         /// Find the reference that corresponds to the given path.
@@ -386,8 +422,10 @@ namespace Microsoft.Build.Tasks
         internal Reference GetReference(AssemblyNameExtension assemblyName)
         {
             ErrorUtilities.VerifyThrow(assemblyName.Name != null, "Got an empty assembly name.");
+
             Reference referenceToReturn = null;
             _references.TryGetValue(assemblyName, out referenceToReturn);
+
             return referenceToReturn;
         }
 
@@ -1096,12 +1134,12 @@ namespace Microsoft.Build.Tasks
         /// Find references and scatter files defined for the given assembly.
         /// </summary>
         /// <param name="reference">The reference to the parent assembly.</param>
-        /// <param name="newEntries">New references are added to this list.</param>
+        /// <param name="newReferences">New references are added to this list.</param>
         /// <param name="removeEntries">Entries that should be removed from the list.</param>
         private void FindDependenciesAndScatterFiles
         (
             Reference reference,
-            ArrayList newEntries
+            Dictionary<AssemblyNameExtension, Reference> newReferences
         )
         {
             // Before checking for dependencies check to see if the reference itself exists. 
@@ -1132,8 +1170,19 @@ namespace Microsoft.Build.Tasks
 
                 foreach (UnifiedAssemblyName unifiedDependency in unifiedDependencies)
                 {
+                    AssemblyNameExtension assemblyName = unifiedDependency.PostUnified;
+
                     // Now, see if it has already been found.
-                    Reference existingReference = GetReference(unifiedDependency.PostUnified);
+                    Reference existingReference = GetReference(assemblyName);
+
+                    if (existingReference == null)
+                    {
+                        newReferences.TryGetValue(assemblyName, out existingReference);
+                    }
+                    else
+                    {
+                        Trace.Assert(!newReferences.ContainsKey(assemblyName));
+                    }
 
                     if (existingReference == null)
                     {
@@ -1153,9 +1202,9 @@ namespace Microsoft.Build.Tasks
 
                         newReference.IsPrerequisite = unifiedDependency.IsPrerequisite;
 
-                        DictionaryEntry newEntry = new DictionaryEntry(unifiedDependency.PostUnified, newReference);
+                        DictionaryEntry newEntry = new DictionaryEntry(assemblyName, newReference);
 
-                        newEntries.Add(newEntry);
+                        newReferences[assemblyName] = newReference;
                     }
                     else
                     {
@@ -1708,7 +1757,7 @@ namespace Microsoft.Build.Tasks
         {
             bool newDependencies = false;
 
-            ArrayList newEntries = new ArrayList();
+            var newReferences = new Dictionary<AssemblyNameExtension, Reference>(AssemblyNameComparer.GenericComparer);
 
             foreach (Reference reference in References.Values)
             {
@@ -1768,15 +1817,14 @@ namespace Microsoft.Build.Tasks
                             // Look for dependent assemblies.
                             if (_findDependencies)
                             {
-                                FindDependenciesAndScatterFiles(reference, newEntries);
+                                FindDependenciesAndScatterFiles(reference, newReferences);
                             }
 
-
-                            // If something was found, then break out and start fresh.
-                            if (newEntries.Count > 0 && BreakEarly)
-                            {
-                                break;
-                            }
+                            ////If something was found, then break out and start fresh.
+                            //if (newEntries.Count > 0 && BreakEarly)
+                            //{
+                            //    break;
+                            //}
                         }
                     }
                     catch (PathTooLongException e)
@@ -1788,10 +1836,10 @@ namespace Microsoft.Build.Tasks
             }
 
             // Add each new dependency found.
-            foreach (DictionaryEntry newEntry in newEntries)
+            foreach (var newReference in newReferences)
             {
                 newDependencies = true;
-                AddReference((AssemblyNameExtension)newEntry.Key, (Reference)newEntry.Value);
+                AddReference(newReference.Key, newReference.Value);
             }
 
             return newDependencies;
