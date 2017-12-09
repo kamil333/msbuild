@@ -3,12 +3,16 @@
 
 using Microsoft.Win32.SafeHandles;
 
+<<<<<<< HEAD:src/Shared/FileSystem/SafeFileHandle.cs
 namespace Microsoft.Build.Shared.FileSystem
+=======
+namespace Microsoft.Build.Utilities.FileSystem
+>>>>>>> 660faf81... fix intellisense:src/Utilities/FileSystem/SafeFileHandle.cs
 {
     /// <summary>
     /// Handle for a volume iteration as returned by WindowsNative.FindFirstVolumeW />
     /// </summary>
-    public sealed class SafeFindFileHandle : SafeHandleZeroOrMinusOneIsInvalid
+    internal sealed class SafeFindFileHandle : SafeHandleZeroOrMinusOneIsInvalid
     {
         /// <summary>
         /// Private constructor for the PInvoke marshaller.

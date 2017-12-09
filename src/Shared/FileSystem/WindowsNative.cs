@@ -256,7 +256,7 @@ namespace Microsoft.Build.Shared.FileSystem
         /// <nodoc/>
         [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
         [SuppressMessage("Microsoft.Interoperability", "CA1401:PInvokesShouldNotBeVisible", Justification = "Needed for custom enumeration.")]
-        public static extern SafeFindFileHandle FindFirstFileW(
+        internal static extern SafeFindFileHandle FindFirstFileW(
             string lpFileName,
             out Win32FindData lpFindFileData);
 
