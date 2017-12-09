@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -126,6 +128,65 @@ namespace Microsoft.Build.Shared.FileSystem
             return enumeration;
         }
 
+        struct CachePathEntry
+        {
+            private string _fullPath;
+
+            public CachePathEntry(string fileName, string directory)
+            {
+                FileName = fileName;
+                Directory = directory;
+
+                _fullPath = null;
+            }
+
+            public string FileName { get; }
+            public string Directory { get; }
+
+            public string FullPath
+            {
+                get
+                {
+                    if (_fullPath == null)
+                    {
+                        _fullPath = Path.Combine(Directory, FileName);
+                    }
+
+                    return _fullPath;
+                }
+            }
+        }
+
+        struct CacheEntry
+        {
+            public EnumerationResult EnumerationResult { get; }
+            public List<CachePathEntry> Directories { get; }
+            public List<CachePathEntry> Files { get; }
+
+            private static List<CachePathEntry> _empty = new List<CachePathEntry>();
+
+            public CacheEntry(EnumerationResult enumerationResult, List<CachePathEntry> directories, List<CachePathEntry> files)
+            {
+                EnumerationResult = enumerationResult;
+                Directories = directories ?? _empty;
+                Files = files ?? _empty;
+            }
+        }
+
+        struct EnumerationResult
+        {
+            public bool Succeeded { get; }
+            public WindowsNative.EnumerateDirectoryResult EnumerateDirectoryResult { get; }
+
+            public EnumerationResult(bool succeeded, WindowsNative.EnumerateDirectoryResult enumerateDirectoryResult)
+            {
+                Succeeded = succeeded;
+                EnumerateDirectoryResult = enumerateDirectoryResult;
+            }
+        }
+
+        private static ConcurrentDictionary<string, CacheEntry> enumerationCache = new ConcurrentDictionary<string, CacheEntry>();
+
         private static WindowsNative.EnumerateDirectoryResult CustomEnumerateDirectoryEntries(
             string directoryPath,
             FileArtifactType fileArtifactType,
@@ -133,6 +194,69 @@ namespace Microsoft.Build.Shared.FileSystem
             SearchOption searchOption,
             ICollection<string> result)
         {
+            var cacheEntry = enumerationCache.GetOrAdd(
+                directoryPath,
+                directory =>
+                {
+                    List<CachePathEntry> files = null;
+                    List<CachePathEntry> directories = null;
+
+                    var enumerationResult = EnumerateSingleDirectory(directoryPath, out directories, out files);
+
+                    return new CacheEntry(enumerationResult, directories, files);
+                });
+
+            if (!cacheEntry.EnumerationResult.Succeeded)
+            {
+                return cacheEntry.EnumerationResult.EnumerateDirectoryResult;
+            }
+
+            foreach (var fileEntry in cacheEntry.Files)
+            {
+                if (fileArtifactType == FileArtifactType.FileOrDirectory ||
+                    fileArtifactType == FileArtifactType.File &&
+                    (pattern == null || pattern == "*" || WindowsNative.PathMatchSpecExW(fileEntry.FileName, pattern, WindowsNative.DwFlags.PmsfNormal) == WindowsNative.ErrorSuccess))
+                {
+                    result.Add(fileEntry.FullPath);
+                }
+            }
+
+            foreach (var directoryEntry in cacheEntry.Directories)
+            {
+                if (searchOption == SearchOption.AllDirectories)
+                {
+                    var recurs = CustomEnumerateDirectoryEntries(
+                        directoryEntry.FullPath,
+                        fileArtifactType,
+                        pattern,
+                        searchOption,
+                        result);
+
+                    if (!recurs.Succeeded)
+                    {
+                        return recurs;
+                    }
+                }
+
+                if (fileArtifactType == FileArtifactType.FileOrDirectory ||
+                    fileArtifactType == FileArtifactType.Directory &&
+                    (pattern == null || pattern == "*" || WindowsNative.PathMatchSpecExW(directoryEntry.FileName, pattern, WindowsNative.DwFlags.PmsfNormal) == WindowsNative.ErrorSuccess))
+                {
+                    result.Add(directoryEntry.FullPath);
+                }
+            }
+
+            return cacheEntry.EnumerationResult.EnumerateDirectoryResult;
+        }
+
+        private static EnumerationResult EnumerateSingleDirectory(
+            string directoryPath,
+            out List<CachePathEntry> directories,
+            out List<CachePathEntry> files)
+        {
+            directories = null;
+            files = null;
+
             var searchDirectoryPath = Path.Combine(directoryPath.TrimEnd('\\'), "*");
 
             WindowsNative.Win32FindData findResult;
@@ -163,7 +287,9 @@ namespace Microsoft.Build.Shared.FileSystem
                             break;
                     }
 
-                    return new WindowsNative.EnumerateDirectoryResult(directoryPath, findHandleOpenStatus, hr);
+                    return new EnumerationResult(
+                        false,
+                        new WindowsNative.EnumerateDirectoryResult(directoryPath, findHandleOpenStatus, hr));
                 }
 
                 while (true)
@@ -171,56 +297,56 @@ namespace Microsoft.Build.Shared.FileSystem
                     var isDirectory = (findResult.DwFileAttributes & FileAttributes.Directory) != 0;
 
                     // There will be entries for the current and parent directories. Ignore those.
-                    if (!isDirectory || (findResult.CFileName != "." && findResult.CFileName != ".."))
+                    if (!isDirectory)
                     {
-                        // Make sure pattern and directory/file filters are honored
-                        // We special case the "*" pattern since it is the default when no pattern is specified
-                        // so we avoid calling the matching function
-                        if (pattern == "*" ||
-                            WindowsNative.PathMatchSpecExW(findResult.CFileName, pattern, WindowsNative.DwFlags.PmsfNormal) ==
-                            WindowsNative.ErrorSuccess)
+                        if (files == null)
                         {
-                            if (fileArtifactType == FileArtifactType.FileOrDirectory ||
-                                !(fileArtifactType == FileArtifactType.Directory ^ isDirectory))
-                            {
-                                result.Add(Path.Combine(directoryPath, findResult.CFileName));
-                            }
+                            files = new List<CachePathEntry>();
                         }
 
-                        // Recursively go into subfolders if specified
-                        if (searchOption == SearchOption.AllDirectories && isDirectory)
-                        {
-                            var recurs = CustomEnumerateDirectoryEntries(
-                                Path.Combine(directoryPath, findResult.CFileName),
-                                fileArtifactType,
-                                pattern,
-                                searchOption,
-                                result);
+                        files.Add(
+                            new CachePathEntry(
+                                findResult.CFileName,
+                                directoryPath));
 
-                            if (!recurs.Succeeded)
-                            {
-                                return recurs;
-                            }
-                        }
+                        //if (pattern == null || WindowsNative.PathMatchSpecW(findResult.CFileName, pattern))
+                        //{
+                        //    if (fileArtifactType == FileArtifactType.FileOrDirectory || !(fileArtifactType == FileArtifactType.Directory ^ isDirectory))
+                        //    {
+                        //        result.Add(Path.Combine(directoryPath, findResult.CFileName));
+                        //    }
+                        //}
+                    }
+
+                    if (isDirectory && findResult.CFileName != "." && findResult.CFileName != "..")
+                    {
+                        if (directories == null)
+                            directories = new List<CachePathEntry>();
+
+                        directories.Add(
+                            new CachePathEntry(
+                                findResult.CFileName,
+                                directoryPath));
                     }
 
                     if (!WindowsNative.FindNextFileW(findHandle, out findResult))
                     {
-                        int hr = Marshal.GetLastWin32Error();
+                        var hr = Marshal.GetLastWin32Error();
                         if (hr == WindowsNative.ErrorNoMoreFiles)
-                        {
-                            // Graceful completion of enumeration.
-                            return new WindowsNative.EnumerateDirectoryResult(
-                                directoryPath,
-                                WindowsNative.EnumerateDirectoryStatus.Success,
-                                hr);
-                        }
+                            return new EnumerationResult(
+                                true,
+                                new WindowsNative.EnumerateDirectoryResult(
+                                    directoryPath,
+                                    WindowsNative.EnumerateDirectoryStatus.Success,
+                                    hr));
 
                         Debug.Assert(hr != WindowsNative.ErrorSuccess);
-                        return new WindowsNative.EnumerateDirectoryResult(
-                            directoryPath,
-                            WindowsNative.EnumerateDirectoryStatus.UnknownError,
-                            hr);
+                        return new EnumerationResult(
+                            false,
+                            new WindowsNative.EnumerateDirectoryResult(
+                                directoryPath,
+                                WindowsNative.EnumerateDirectoryStatus.UnknownError,
+                                hr));
                     }
                 }
             }
