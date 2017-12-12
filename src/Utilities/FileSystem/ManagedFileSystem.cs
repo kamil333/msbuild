@@ -10,7 +10,7 @@ namespace Microsoft.Build.Utilities.FileSystem
     /// <summary>
     /// Implementation of file system operations directly over the dot net managed layer
     /// </summary>
-    public sealed class ManagedFileSystem : IFileSystemAbstraction
+    internal sealed class ManagedFileSystem : IFileSystemAbstraction
     {
         private static readonly ManagedFileSystem Instance = new ManagedFileSystem();
 

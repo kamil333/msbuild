@@ -26,7 +26,7 @@ namespace Microsoft.Build.Utilities.FileSystem
     /// <summary>
     /// Windows-specific implementation of file system operations using Windows native invocations
     /// </summary>
-    public class WindowsFileSystem : IFileSystemAbstraction
+    internal class WindowsFileSystem : IFileSystemAbstraction
     {
         private static readonly WindowsFileSystem Instance = new WindowsFileSystem();
 

@@ -20,7 +20,7 @@ namespace Microsoft.Build.Utilities.FileSystem
     [SuppressMessage("Microsoft.Design", "CA1032:ImplementStandardExceptionConstructors",
         Justification = "We don't need exceptions to cross AppDomain boundaries.")]
     [Serializable]
-    public sealed class NativeWin32Exception : Win32Exception
+    internal sealed class NativeWin32Exception : Win32Exception
     {
         /// <summary>
         /// Creates an exception representing a native failure (with a corresponding Win32 error code).
