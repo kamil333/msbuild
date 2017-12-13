@@ -194,8 +194,11 @@
     <Compile Include="CommandLineBuilder.cs">
       <ExcludeFromStyleCop>true</ExcludeFromStyleCop>
     </Compile>
+    <Compile Include="FileSystem\IFileNode.cs" />
+    <Compile Include="FileSystem\IFileStore.cs" />
     <Compile Include="FileSystem\FileSystemFactory.cs" />
     <Compile Include="FileSystem\IFileSystemAbstraction.cs" />
+    <Compile Include="FileSystem\StoreBasedFileSystem.cs" />
     <Compile Include="FileSystem\ManagedFileSystem.cs" />
     <Compile Include="FileSystem\NativeWin32Exception.cs" />
     <Compile Include="FileSystem\SafeFileHandle.cs" />

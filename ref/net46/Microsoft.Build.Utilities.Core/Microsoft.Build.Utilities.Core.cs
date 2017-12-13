@@ -586,6 +586,21 @@ namespace Microsoft.Build.Utilities.FileSystem
     {
         public static Microsoft.Build.Utilities.FileSystem.IFileSystemAbstraction GetFileSystem() { throw null; }
     }
+    public partial interface IFileNode
+    {
+        System.Collections.Generic.IReadOnlyCollection<Microsoft.Build.Utilities.FileSystem.IFileNode> Children { get; }
+        string FileName { get; }
+        string FullPath { get; }
+        bool IsDirectory { get; }
+        Microsoft.Build.Utilities.FileSystem.IFileNode Parent { get; }
+    }
+    public partial interface IFileStore
+    {
+        Microsoft.Build.Utilities.FileSystem.NodeSearchResult TryGetNode(string path, out Microsoft.Build.Utilities.FileSystem.IFileNode fileNode);
+    }
+    public static partial class IFileStoreExtensions
+    {
+    }
     public partial interface IFileSystemAbstraction
     {
         bool DirectoryEntryExists(string path);
@@ -595,34 +610,11 @@ namespace Microsoft.Build.Utilities.FileSystem
         System.Collections.Generic.IEnumerable<string> EnumerateFileSystemEntries(string path, string searchPattern="*", System.IO.SearchOption searchOption=(System.IO.SearchOption)(0));
         bool FileExists(string path);
     }
-    public sealed partial class ManagedFileSystem : Microsoft.Build.Utilities.FileSystem.IFileSystemAbstraction
+    public enum NodeSearchResult
     {
-        internal ManagedFileSystem() { }
-        public bool DirectoryEntryExists(string path) { throw null; }
-        public bool DirectoryExists(string path) { throw null; }
-        public System.Collections.Generic.IEnumerable<string> EnumerateDirectories(string path, string searchPattern, System.IO.SearchOption searchOption) { throw null; }
-        public System.Collections.Generic.IEnumerable<string> EnumerateFiles(string path, string searchPattern, System.IO.SearchOption searchOption) { throw null; }
-        public System.Collections.Generic.IEnumerable<string> EnumerateFileSystemEntries(string path, string searchPattern, System.IO.SearchOption searchOption) { throw null; }
-        public bool FileExists(string path) { throw null; }
-        public static Microsoft.Build.Utilities.FileSystem.ManagedFileSystem Singleton() { throw null; }
-    }
-    public sealed partial class NativeWin32Exception : System.ComponentModel.Win32Exception
-    {
-        public NativeWin32Exception(int nativeErrorCode) { }
-        public NativeWin32Exception(int nativeErrorCode, [System.ComponentModel.LocalizableAttribute(false)]string messagePrefix) { }
-        public static string GetFormattedMessageForNativeErrorCode(int nativeErrorCode, [System.ComponentModel.LocalizableAttribute(false)]string messagePrefix=null) { throw null; }
-        public static int HResultFromWin32(int nativeErrorCode) { throw null; }
-    }
-    public partial class WindowsFileSystem : Microsoft.Build.Utilities.FileSystem.IFileSystemAbstraction
-    {
-        internal WindowsFileSystem() { }
-        public bool DirectoryEntryExists(string path) { throw null; }
-        public bool DirectoryExists(string path) { throw null; }
-        public System.Collections.Generic.IEnumerable<string> EnumerateDirectories(string path, string searchPattern, System.IO.SearchOption searchOption) { throw null; }
-        public System.Collections.Generic.IEnumerable<string> EnumerateFiles(string path, string searchPattern, System.IO.SearchOption searchOption) { throw null; }
-        public System.Collections.Generic.IEnumerable<string> EnumerateFileSystemEntries(string path, string searchPattern, System.IO.SearchOption searchOption) { throw null; }
-        public bool FileExists(string path) { throw null; }
-        public static Microsoft.Build.Utilities.FileSystem.WindowsFileSystem Singleton() { throw null; }
+        DoesNotExist = 1,
+        Exists = 0,
+        Unknown = 2,
     }
 }
 namespace Microsoft.VisualStudio.Setup.Configuration
