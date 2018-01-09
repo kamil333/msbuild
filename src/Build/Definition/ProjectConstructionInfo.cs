@@ -31,5 +31,13 @@ namespace Microsoft.Build.Evaluation
         /// The <see cref="ProjectLoadSettings"/> to use for evaluation.
         /// </summary>
         public ProjectLoadSettings LoadSettings { get; set; } = ProjectLoadSettings.Default;
+
+        /// <summary>
+        /// The <see cref="EvaluationContext"/> to use for evaluation.
+        /// The <see cref="Project"/> will keep the reference to the context because
+        /// some of its methods trigger hidden reevaluations, and those hidden reevaluations need the initial context.
+        /// The stored context can be overidden via <see cref="Project.ReevaluateIfNecessary(EvaluationContext)"/>
+        /// </summary>
+        public EvaluationContext EvaluationContext { get; set; }
     }
 }
