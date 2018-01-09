@@ -10,8 +10,18 @@ namespace Microsoft.Build.Utilities.FileSystem
     /// </summary>
     public static class FileSystemFactory
     {
+
         /// <nodoc/>
-        public static IFileSystemAbstraction GetFileSystem()
+        public static IFileSystemAbstraction GetFileSystem(IFileStore fileStore = null)
+        {
+            var fileSystem = GetPlatformSpecificFileSystem();
+
+            return fileStore == null
+                ? fileSystem
+                : new StoreBasedFileSystem(fileStore, fileSystem);
+        }
+
+        private static IFileSystemAbstraction GetPlatformSpecificFileSystem()
         {
             // The windows-specific file system is only available on Windows Vista or higher
             if (IsWinVistaOrHigher())

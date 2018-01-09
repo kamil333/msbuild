@@ -37,6 +37,7 @@ using Microsoft.Build.Framework;
 using Microsoft.Build.Framework.Profiler;
 using Microsoft.Build.Internal;
 using Microsoft.Build.Utilities;
+using Microsoft.Build.Utilities.FileSystem;
 using ILoggingService = Microsoft.Build.BackEnd.Logging.ILoggingService;
 #if (!STANDALONEBUILD)
 using Microsoft.Internal.Performance;
@@ -169,6 +170,7 @@ namespace Microsoft.Build.Evaluation
         private readonly ProjectInstance _projectInstanceIfAnyForDebuggerOnly;
 
         private readonly SdkResolution _sdkResolution;
+
         private readonly EvaluationContext _evaluationContext;
 
         /// <summary>
@@ -246,6 +248,7 @@ namespace Microsoft.Build.Evaluation
         private static readonly EngineFileUtilities.IOCache _fallbackSearchPathsCache = new EngineFileUtilities.IOCache();
 
         private readonly EvaluationProfiler _evaluationProfiler;
+        private IFileSystemAbstraction _fileSystem;
 
         /// <summary>
         /// Private constructor called by the static Evaluate method.
@@ -261,13 +264,16 @@ namespace Microsoft.Build.Evaluation
             ProjectRootElementCache projectRootElementCache,
             ProjectInstance projectInstanceIfAnyForDebuggerOnly,
             SdkResolution sdkResolution,
-            EvaluationContext evaluationContext)
+            EvaluationContext evaluationContext,
+            IFileStore fileStore)
         {
             ErrorUtilities.VerifyThrowInternalNull(data, "data");
             ErrorUtilities.VerifyThrowInternalNull(projectRootElementCache, "projectRootElementCache");
 
             // Create containers for the evaluation results
             data.InitializeForEvaluation(toolsetProvider);
+
+            _fileSystem = FileSystemFactory.GetFileSystem(fileStore);
 
             _expander = new Expander<P, I>(data, data);
 
@@ -395,7 +401,8 @@ namespace Microsoft.Build.Evaluation
             BuildEventContext buildEventContext,
             ProjectInstance projectInstanceIfAnyForDebuggerOnly,
             SdkResolution sdkResolution,
-            EvaluationContext evaluationContext = null)
+            EvaluationContext evaluationContext = null,
+            IFileStore fileStore = null)
         {
 #if (!STANDALONEBUILD)
             using (new CodeMarkerStartEnd(CodeMarkerEvent.perfMSBuildProjectEvaluateBegin, CodeMarkerEvent.perfMSBuildProjectEvaluateEnd))
@@ -419,7 +426,8 @@ namespace Microsoft.Build.Evaluation
                     projectRootElementCache,
                     projectInstanceIfAnyForDebuggerOnly,
                     sdkResolution,
-                    evaluationContext);
+                    evaluationContext,
+                    fileStore);
 
                 return evaluator.Evaluate(loggingService, buildEventContext);
 #if MSBUILDENABLEVSPROFILING 
@@ -876,7 +884,7 @@ namespace Microsoft.Build.Evaluation
                 using (_evaluationProfiler.TrackPass(EvaluationPass.Items))
                 {
                     // comment next line to turn off lazy Evaluation
-                    lazyEvaluator = new LazyItemEvaluator<P, I, M, D>(_data, _itemFactory, _evaluationLoggingContext, _evaluationProfiler);
+                    lazyEvaluator = new LazyItemEvaluator<P, I, M, D>(_data, _itemFactory, _evaluationLoggingContext, _evaluationProfiler, _fileSystem);
 
                     // Pass3: evaluate project items
                     foreach (ProjectItemGroupElement itemGroup in _itemGroupElements)

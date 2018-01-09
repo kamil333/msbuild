@@ -32,6 +32,7 @@ using ProjectItemFactory = Microsoft.Build.Evaluation.ProjectItem.ProjectItemFac
 using System.Globalization;
 using Microsoft.Build.Globbing;
 using Microsoft.Build.Utilities;
+using Microsoft.Build.Utilities.FileSystem;
 using EvaluationItemSpec = Microsoft.Build.Evaluation.ItemSpec<Microsoft.Build.Evaluation.ProjectProperty, Microsoft.Build.Evaluation.ProjectItem>;
 using EvaluationItemExpressionFragment = Microsoft.Build.Evaluation.ItemExpressionFragment<Microsoft.Build.Evaluation.ProjectProperty, Microsoft.Build.Evaluation.ProjectItem>;
 
@@ -131,6 +132,11 @@ namespace Microsoft.Build.Evaluation
         /// - <see cref="GetItemProvenance(string)"/>
         /// </summary>
         private EvaluationContext _lastEvaluationContext;
+
+        /// <summary>
+        /// See <see cref="_lastEvaluationContext"/>
+        /// </summary>
+        private IFileStore _lastFileStore;
 
         /// <summary>
         /// Default project template options (include all features).
@@ -299,11 +305,19 @@ namespace Microsoft.Build.Evaluation
         /// <param name="projectCollection">The <see cref="ProjectCollection"/> the project is added to.</param>
         /// <param name="loadSettings">The <see cref="ProjectLoadSettings"/> to use for evaluation.</param>
         public Project(ProjectRootElement xml, IDictionary<string, string> globalProperties, string toolsVersion, string subToolsetVersion, ProjectCollection projectCollection, ProjectLoadSettings loadSettings)
-            : this(xml, globalProperties,toolsVersion, subToolsetVersion, projectCollection, loadSettings, null)
+            : this(xml, globalProperties,toolsVersion, subToolsetVersion, projectCollection, loadSettings, null, null)
         {
         }
 
-        private Project(ProjectRootElement xml, IDictionary<string, string> globalProperties, string toolsVersion, string subToolsetVersion, ProjectCollection projectCollection, ProjectLoadSettings loadSettings, EvaluationContext evaluationContext)
+        private Project(
+            ProjectRootElement xml,
+            IDictionary<string, string> globalProperties,
+            string toolsVersion,
+            string subToolsetVersion,
+            ProjectCollection projectCollection,
+            ProjectLoadSettings loadSettings,
+            EvaluationContext evaluationContext,
+            IFileStore fileStore)
         {
             ErrorUtilities.VerifyThrowArgumentNull(xml, "xml");
             ErrorUtilities.VerifyThrowArgumentLengthIfNotNull(toolsVersion, "toolsVersion");
@@ -312,7 +326,7 @@ namespace Microsoft.Build.Evaluation
             _xml = xml;
             _projectCollection = projectCollection;
 
-            Initialize(globalProperties, toolsVersion, subToolsetVersion, loadSettings, evaluationContext);
+            Initialize(globalProperties, toolsVersion, subToolsetVersion, loadSettings, evaluationContext, fileStore);
         }
 
         /// <summary>
@@ -390,11 +404,19 @@ namespace Microsoft.Build.Evaluation
         /// <param name="projectCollection">The collection with which this project should be associated. May not be null.</param>
         /// <param name="loadSettings">The load settings for this project.</param>
         public Project(XmlReader xmlReader, IDictionary<string, string> globalProperties, string toolsVersion, string subToolsetVersion, ProjectCollection projectCollection, ProjectLoadSettings loadSettings)
-            : this(xmlReader, globalProperties, toolsVersion, subToolsetVersion, projectCollection, loadSettings, null)
+            : this(xmlReader, globalProperties, toolsVersion, subToolsetVersion, projectCollection, loadSettings, null, null)
         {
         }
 
-        private Project(XmlReader xmlReader, IDictionary<string, string> globalProperties, string toolsVersion, string subToolsetVersion, ProjectCollection projectCollection, ProjectLoadSettings loadSettings, EvaluationContext evaluationContext)
+        private Project(
+            XmlReader xmlReader,
+            IDictionary<string, string> globalProperties,
+            string toolsVersion,
+            string subToolsetVersion,
+            ProjectCollection projectCollection,
+            ProjectLoadSettings loadSettings,
+            EvaluationContext evaluationContext,
+            IFileStore fileStore)
         {
             ErrorUtilities.VerifyThrowArgumentNull(xmlReader, "xmlReader");
             ErrorUtilities.VerifyThrowArgumentLengthIfNotNull(toolsVersion, "toolsVersion");
@@ -413,7 +435,7 @@ namespace Microsoft.Build.Evaluation
                 throw;
             }
 
-            Initialize(globalProperties, toolsVersion, subToolsetVersion, loadSettings, evaluationContext);
+            Initialize(globalProperties, toolsVersion, subToolsetVersion, loadSettings, evaluationContext, fileStore);
         }
 
         /// <summary>
@@ -497,7 +519,15 @@ namespace Microsoft.Build.Evaluation
         {
         }
 
-        private Project(string projectFile, IDictionary<string, string> globalProperties, string toolsVersion, string subToolsetVersion, ProjectCollection projectCollection, ProjectLoadSettings loadSettings, EvaluationContext evaluationContext)
+        private Project(
+            string projectFile,
+            IDictionary<string, string> globalProperties,
+            string toolsVersion,
+            string subToolsetVersion,
+            ProjectCollection projectCollection,
+            ProjectLoadSettings loadSettings,
+            EvaluationContext evaluationContext = null,
+            IFileStore fileStore = null)
         {
             ErrorUtilities.VerifyThrowArgumentNull(projectFile, "projectFile");
             ErrorUtilities.VerifyThrowArgumentLengthIfNotNull(toolsVersion, "toolsVersion");
@@ -526,7 +556,7 @@ namespace Microsoft.Build.Evaluation
 
             try
             {
-                Initialize(globalProperties, toolsVersion, subToolsetVersion, loadSettings, evaluationContext);
+                Initialize(globalProperties, toolsVersion, subToolsetVersion, loadSettings, evaluationContext, fileStore);
             }
             catch (Exception ex)
             {
@@ -559,7 +589,8 @@ namespace Microsoft.Build.Evaluation
                 info.SubToolsetVersion,
                 info.ProjectCollection ?? ProjectCollection.GlobalProjectCollection,
                 info.LoadSettings,
-                info.EvaluationContext);
+                info.EvaluationContext,
+                info.FileStore);
         }
 
         /// <summary>
@@ -577,7 +608,8 @@ namespace Microsoft.Build.Evaluation
                 info.SubToolsetVersion,
                 info.ProjectCollection ?? ProjectCollection.GlobalProjectCollection,
                 info.LoadSettings,
-                info.EvaluationContext);
+                info.EvaluationContext,
+                info.FileStore);
         }
 
         /// <summary>
@@ -595,7 +627,8 @@ namespace Microsoft.Build.Evaluation
                 info.SubToolsetVersion,
                 info.ProjectCollection ?? ProjectCollection.GlobalProjectCollection,
                 info.LoadSettings,
-                info.EvaluationContext);
+                info.EvaluationContext,
+                info.FileStore);
         }
 
         /// <summary>
@@ -2176,9 +2209,12 @@ namespace Microsoft.Build.Evaluation
         /// See <see cref="ReevaluateIfNecessary()"/>
         /// </summary>
         /// <param name="evaluationContext">The <see cref="EvaluationContext"/> to use. See <see cref="ProjectConstructionInfo.EvaluationContext"/></param>
-        public void ReevaluateIfNecessary(EvaluationContext evaluationContext)
+        /// <param name="fileStore">The <see cref="IFileStore"/> to use. See <see cref="ProjectConstructionInfo.FileStore"/></param>
+        public void ReevaluateIfNecessary(EvaluationContext evaluationContext, IFileStore fileStore)
         {
             _lastEvaluationContext = evaluationContext;
+            _lastFileStore = fileStore;
+
             ReevaluateIfNecessary(LoggingService);
         }
 
@@ -2746,7 +2782,8 @@ namespace Microsoft.Build.Evaluation
                 s_buildEventContext,
                 null /* no project instance for debugging */,
                 _projectCollection.SdkResolution,
-                _lastEvaluationContext);
+                _lastEvaluationContext,
+                _lastFileStore);
 
             ErrorUtilities.VerifyThrow(LastEvaluationId != BuildEventContext.InvalidEvaluationId, "Evaluation should produce an evaluation ID");
 
@@ -2777,7 +2814,13 @@ namespace Microsoft.Build.Evaluation
         /// Global properties may be null.
         /// Tools version may be null.
         /// </summary>
-        private void Initialize(IDictionary<string, string> globalProperties, string toolsVersion, string subToolsetVersion, ProjectLoadSettings loadSettings, EvaluationContext evaluationContext)
+        private void Initialize(
+            IDictionary<string, string> globalProperties,
+            string toolsVersion,
+            string subToolsetVersion,
+            ProjectLoadSettings loadSettings,
+            EvaluationContext evaluationContext,
+            IFileStore fileStore)
         {
             _xml.MarkAsExplicitlyLoaded();
 
@@ -2816,7 +2859,7 @@ namespace Microsoft.Build.Evaluation
 
             ErrorUtilities.VerifyThrow(LastEvaluationId == BuildEventContext.InvalidEvaluationId, "This is the first evaluation therefore the last evaluation id is invalid");
 
-            ReevaluateIfNecessary(evaluationContext);
+            ReevaluateIfNecessary(evaluationContext, fileStore);
 
             ErrorUtilities.VerifyThrow(LastEvaluationId != BuildEventContext.InvalidEvaluationId, "Last evaluation ID must be valid after the first evaluation");
 
