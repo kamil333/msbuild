@@ -400,13 +400,16 @@ namespace Microsoft.Build.BackEnd
                 {
                     // The expression is not of the form "@(X)". Treat as string
 
+                    var engineFileUtilities = new EngineFileUtilities(
+                        FileMatcher.Default,
+                        new ConcurrentDictionary<string, ImmutableArray<string>>());
+
                     // Pass the non wildcard expanded excludes here to fix https://github.com/Microsoft/msbuild/issues/2621
                     string[] includeSplitFiles = EngineFileUtilities.Default.GetFileListEscaped(
                         Project.Directory,
                         includeSplit,
                         excludes,
-                        false,
-                        new ConcurrentDictionary<string, ImmutableArray<string>>());
+                        forceEvaluate: false);
 
                     foreach (string includeSplitFile in includeSplitFiles)
                     {

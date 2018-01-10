@@ -13,6 +13,7 @@ using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
+using Microsoft.Build.Internal;
 using Microsoft.Build.Utilities;
 using Microsoft.Build.Shared.FileSystem;
 
@@ -31,7 +32,6 @@ namespace Microsoft.Build.Evaluation
         private readonly IItemFactory<I, I> _itemFactory;
         private readonly LoggingContext _loggingContext;
         private readonly EvaluationProfiler _evaluationProfiler;
-        private readonly IFileSystemAbstraction _fileSystem;
 
         private int _nextElementOrder = 0;
 
@@ -51,6 +51,8 @@ namespace Microsoft.Build.Evaluation
         /// </summary>
         private readonly ConcurrentDictionary<string, ImmutableArray<string>> _entriesCache = new ConcurrentDictionary<string, ImmutableArray<string>>();
 
+        private EngineFileUtilities _engineFileUtilities;
+
         public LazyItemEvaluator(
             IEvaluatorData<P, I, M, D> data,
             IItemFactory<I, I> itemFactory,
@@ -65,7 +67,10 @@ namespace Microsoft.Build.Evaluation
             _itemFactory = itemFactory;
             _loggingContext = loggingContext;
             _evaluationProfiler = evaluationProfiler;
-            _fileSystem = fileSystem;
+
+            _engineFileUtilities = new EngineFileUtilities(
+                fileMatcher: new FileMatcher(fileSystem),
+                ioEntriesCache: new ConcurrentDictionary<string, ImmutableArray<string>>());
         }
 
         private ImmutableList<I> GetItems(string itemType)

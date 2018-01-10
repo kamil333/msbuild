@@ -17,6 +17,12 @@ namespace Microsoft.Build.Internal
     {
         private readonly FileMatcher _fileMatcher;
 
+        /// <summary>
+        /// Directory enumeration cache.
+        /// TODO: remove this cache in favor of IFileSystemAbstraction based caching
+        /// </summary>
+        private readonly ConcurrentDictionary<string, ImmutableArray<string>> _ioEntriesCache;
+
         // Regexes for wildcard filespecs that should not get expanded
         // By default all wildcards are expanded.
         private static List<Regex> s_lazyWildCardExpansionRegexes;
@@ -37,9 +43,10 @@ namespace Microsoft.Build.Internal
 
         public static EngineFileUtilities Default = new EngineFileUtilities(FileMatcher.Default);
 
-        public EngineFileUtilities(FileMatcher fileMatcher)
+        public EngineFileUtilities(FileMatcher fileMatcher, ConcurrentDictionary<string, ImmutableArray<string>> ioEntriesCache = null)
         {
             _fileMatcher = fileMatcher;
+            _ioEntriesCache = ioEntriesCache;
         }
 
 
@@ -89,11 +96,10 @@ namespace Microsoft.Build.Internal
             string directoryEscaped,
             string filespecEscaped,
             IEnumerable<string> excludeSpecsEscaped = null,
-            bool forceEvaluate = false,
-            ConcurrentDictionary<string, ImmutableArray<string>> entriesCache = null
+            bool forceEvaluate = false
             )
         {
-            return GetFileList(directoryEscaped, filespecEscaped, true /* returnEscaped */, forceEvaluate, excludeSpecsEscaped, entriesCache);
+            return GetFileList(directoryEscaped, filespecEscaped, true /* returnEscaped */, forceEvaluate, excludeSpecsEscaped);
         }
 
         internal static bool FilespecHasWildcards(string filespecEscaped)
@@ -143,8 +149,7 @@ namespace Microsoft.Build.Internal
             string filespecEscaped,
             bool returnEscaped,
             bool forceEvaluateWildCards,
-            IEnumerable<string> excludeSpecsEscaped = null,
-            ConcurrentDictionary<string, ImmutableArray<string>> entriesCache = null
+            IEnumerable<string> excludeSpecsEscaped = null
             )
         {
             ErrorUtilities.VerifyThrowInternalLength(filespecEscaped, "filespecEscaped");
@@ -179,7 +184,7 @@ namespace Microsoft.Build.Internal
                 // as a relative path, we will get back a bunch of relative paths.
                 // If the filespec started out as an absolute path, we will get
                 // back a bunch of absolute paths.
-                fileList = _fileMatcher.GetFiles(directoryUnescaped, filespecUnescaped, excludeSpecsUnescaped, entriesCache);
+                fileList = _fileMatcher.GetFiles(directoryUnescaped, filespecUnescaped, excludeSpecsUnescaped, _ioEntriesCache);
 
                 ErrorUtilities.VerifyThrow(fileList != null, "We must have a list of files here, even if it's empty.");
 
