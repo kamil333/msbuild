@@ -478,7 +478,7 @@ namespace Microsoft.Build.Evaluation
                     else
                     {
                         // The expression is not of the form "@(X)". Treat as string
-                        string[] includeSplitFilesEscaped = EngineFileUtilities.GetFileListEscaped(rootDirectory, includeSplitEscaped);
+                        string[] includeSplitFilesEscaped = EngineFileUtilities.Default.GetFileListEscaped(rootDirectory, includeSplitEscaped);
 
                         if (includeSplitFilesEscaped.Length > 0)
                         {
@@ -1849,7 +1849,7 @@ namespace Microsoft.Build.Evaluation
                         (
                             _expander.ExpandIntoStringLeaveEscaped(itemElement.Update, ExpanderOptions.ExpandPropertiesAndItems, itemElement.Location)
                         )
-                        .SelectMany(i => EngineFileUtilities.GetFileListEscaped(_projectRootElement.DirectoryPath, i))
+                        .SelectMany(i => EngineFileUtilities.Default.GetFileListEscaped(_projectRootElement.DirectoryPath, i))
                         .Select(EscapingUtilities.UnescapeAll));
 
             var itemsToUpdate = _data.GetItems(itemElement.ItemType).Where(i => expandedItemSet.Contains(i.EvaluatedInclude)).ToList();
@@ -1887,7 +1887,7 @@ namespace Microsoft.Build.Evaluation
 
                     foreach (string excludeSplit in excludeSplits)
                     {
-                        string[] excludeSplitFiles = EngineFileUtilities.GetFileListEscaped(_projectRootElement.DirectoryPath, excludeSplit);
+                        string[] excludeSplitFiles = EngineFileUtilities.Default.GetFileListEscaped(_projectRootElement.DirectoryPath, excludeSplit);
 
                         foreach (string excludeSplitFile in excludeSplitFiles)
                         {
@@ -2572,7 +2572,7 @@ namespace Microsoft.Build.Evaluation
                     }
 
                     // Expand the wildcards and provide an alphabetical order list of import statements.
-                    importFilesEscaped = EngineFileUtilities.GetFileListEscaped(directoryOfImportingFile, importExpressionEscapedItem, forceEvaluate: true);
+                    importFilesEscaped = EngineFileUtilities.Default.GetFileListEscaped(directoryOfImportingFile, importExpressionEscapedItem, forceEvaluate: true);
                 }
                 catch (Exception ex) when (ExceptionHandling.IsIoRelatedException(ex))
                 {
