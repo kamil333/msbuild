@@ -65,7 +65,7 @@ namespace Microsoft.Build.UnitTests
                 {
                     try
                     {
-                        Assert.Equal(pattern.Value, FileMatcher.GetFiles(workingPath, pattern.Key).Length);
+                        Assert.Equal(pattern.Value, FileMatcher.Default.GetFiles(workingPath, pattern.Key).Length);
                     }
                     catch (Exception)
                     {
@@ -241,7 +241,7 @@ namespace Microsoft.Build.UnitTests
                 string[] matchedFiles = null;
                 try
                 {
-                    matchedFiles = FileMatcher.GetFiles(workingPath, include, excludes);
+                    matchedFiles = FileMatcher.Default.GetFiles(workingPath, include, excludes);
                     if (hasNoMatches)
                     {
                         Assert.Equal(0, matchedFiles.Length);
@@ -316,14 +316,13 @@ namespace Microsoft.Build.UnitTests
                     string matchFileExpression;
                     bool needsRecursion;
                     bool isLegalFileSpec;
-                    FileMatcher.GetFileSpecInfo(includePattern,
+                    FileMatcher.Default.GetFileSpecInfo(includePattern,
                         out fixedDirectoryPart,
                         out wildcardDirectoryPart,
                         out filenamePart,
                         out matchFileExpression,
                         out needsRecursion,
-                        out isLegalFileSpec,
-                        FileMatcher.s_defaultGetFileSystemEntries);
+                        out isLegalFileSpec);
                     bool matchWithRegex =
                         // if we have a directory specification that uses wildcards, and
                         (wildcardDirectoryPart.Length > 0) &&
@@ -1105,7 +1104,7 @@ namespace Microsoft.Build.UnitTests
         public void IllegalTooLongPath()
         {
             string longString = new string('X', 500) + "*"; // need a wildcard to do anything
-            string[] result = FileMatcher.GetFiles(@"c:\", longString);
+            string[] result = FileMatcher.Default.GetFiles(@"c:\", longString);
 
             Assert.Equal(longString, result[0]); // Does not throw
 
@@ -1149,7 +1148,7 @@ namespace Microsoft.Build.UnitTests
                 Directory.CreateDirectory(workingPath);
                 Directory.CreateDirectory(workingPathSubfolder);
 
-                files = FileMatcher.GetFiles(workingPath, offendingPattern);
+                files = FileMatcher.Default.GetFiles(workingPath, offendingPattern);
             }
             finally
             {
@@ -1171,7 +1170,7 @@ namespace Microsoft.Build.UnitTests
             {
                 Directory.CreateDirectory(workingPath);
                 File.WriteAllText(fileName, "Hello there.");
-                files = FileMatcher.GetFiles(workingPath, offendingPattern);
+                files = FileMatcher.Default.GetFiles(workingPath, offendingPattern);
             }
             finally
             {
@@ -1201,7 +1200,7 @@ namespace Microsoft.Build.UnitTests
                 Directory.CreateDirectory(workingPath);
                 Directory.CreateDirectory(workingPathSubdir);
                 File.AppendAllText(workingPathSubdirBing, "y");
-                files = FileMatcher.GetFiles(workingPath, offendingPattern);
+                files = FileMatcher.Default.GetFiles(workingPath, offendingPattern);
             }
             finally
             {
@@ -1231,15 +1230,15 @@ namespace Microsoft.Build.UnitTests
 
                     var testProject = env.CreateTestProjectWithFiles(string.Empty, new[] {"a.cs", "b.cs", "c.cs"});
 
-                    var files = FileMatcher.GetFiles(testProject.TestRoot, "**/*.cs");
+                    var files = FileMatcher.Default.GetFiles(testProject.TestRoot, "**/*.cs");
                     Array.Sort(files);
                     Assert.Equal(new []{"a.cs", "b.cs", "c.cs"}, files);
 
-                    files = FileMatcher.GetFiles(testProject.TestRoot, "**/*.cs", new []{"a.cs"});
+                    files = FileMatcher.Default.GetFiles(testProject.TestRoot, "**/*.cs", new []{"a.cs"});
                     Array.Sort(files);
                     Assert.Equal(new[] {"b.cs", "c.cs" }, files);
 
-                    files = FileMatcher.GetFiles(testProject.TestRoot, "**/*.cs", new []{"a.cs", "c.cs"});
+                    files = FileMatcher.Default.GetFiles(testProject.TestRoot, "**/*.cs", new []{"a.cs", "c.cs"});
                     Array.Sort(files);
                     Assert.Equal(new[] {"b.cs" }, files);
                 }
@@ -1976,13 +1975,14 @@ namespace Microsoft.Build.UnitTests
         private static void MatchDriver(string filespec, string[] excludeFilespecs, string[] matchingFiles, string[] nonmatchingFiles, string[] untouchableFiles, bool normalizeAllPaths = true, bool normalizeExpectedMatchingFiles = false)
         {
             MockFileSystem mockFileSystem = new MockFileSystem(matchingFiles, nonmatchingFiles, untouchableFiles);
-            string[] files = FileMatcher.GetFiles
+
+            var fileMatcher = new FileMatcher(mockFileSystem.GetAccessibleFileSystemEntries, mockFileSystem.DirectoryExists);
+
+            string[] files = fileMatcher.GetFiles
             (
                 String.Empty, /* we don't need project directory as we use mock filesystem */
                 filespec,
-                excludeFilespecs?.ToList(),
-                new FileMatcher.GetFileSystemEntries(mockFileSystem.GetAccessibleFileSystemEntries),
-                new DirectoryExists(mockFileSystem.DirectoryExists)
+                excludeFilespecs?.ToList()
             );
 
             Func<string[], string[]> normalizeAllFunc = (paths => normalizeAllPaths ? paths.Select(MockFileSystem.Normalize).ToArray() : paths);
@@ -2049,6 +2049,9 @@ namespace Microsoft.Build.UnitTests
          * Validate that SplitFileSpec(...) is returning the expected constituent values.
          *************************************************************************************/
 
+        private static FileMatcher loopBackFileMatcher = new FileMatcher(GetFileSystemEntriesLoopBack, null);
+
+
         private static void ValidateSplitFileSpec
             (
             string filespec,
@@ -2060,13 +2063,13 @@ namespace Microsoft.Build.UnitTests
             string fixedDirectoryPart;
             string wildcardDirectoryPart;
             string filenamePart;
-            FileMatcher.SplitFileSpec
+
+            loopBackFileMatcher.SplitFileSpec
             (
                 filespec,
                 out fixedDirectoryPart,
                 out wildcardDirectoryPart,
-                out filenamePart,
-                new FileMatcher.GetFileSystemEntries(GetFileSystemEntriesLoopBack)
+                out filenamePart
             );
 
             expectedFixedDirectoryPart = FileUtilities.FixFilePath(expectedFixedDirectoryPart);
@@ -2168,13 +2171,12 @@ namespace Microsoft.Build.UnitTests
             Regex regexFileMatch;
             bool needsRecursion;
             bool isLegalFileSpec;
-            FileMatcher.GetFileSpecInfoWithRegexObject
+            loopBackFileMatcher.GetFileSpecInfoWithRegexObject
             (
                 filespec,
                 out regexFileMatch,
                 out needsRecursion,
-                out isLegalFileSpec,
-                new FileMatcher.GetFileSystemEntries(GetFileSystemEntriesLoopBack)
+                out isLegalFileSpec
             );
 
             if (isLegalFileSpec)
@@ -2203,7 +2205,7 @@ namespace Microsoft.Build.UnitTests
             bool shouldBeRecursive
         )
         {
-            FileMatcher.Result match = FileMatcher.FileMatch(filespec, fileToMatch);
+            FileMatcher.Result match = FileMatcher.Default.FileMatch(filespec, fileToMatch);
 
             if (!match.isLegalFileSpec)
             {
