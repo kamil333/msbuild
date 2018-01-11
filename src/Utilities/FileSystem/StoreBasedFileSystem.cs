@@ -160,10 +160,10 @@ namespace Microsoft.Build.Utilities.FileSystem
                 }
             }
 
-            if (path[path.Length - 1].IsSlash())
-            {
-                return false;
-            }
+            //if (!path[path.Length - 1].IsSlash())
+            //{
+            //    return false;
+            //}
 
             return true;
         }

@@ -1808,6 +1808,8 @@ namespace Microsoft.Build.Shared
                 out isLegalFileSpec
             );
 
+            fixedDirectoryPart = Normalize(fixedDirectoryPart);
+
             /*
              * If the filespec is invalid, then just return now.
              */
@@ -1867,7 +1869,7 @@ namespace Microsoft.Build.Shared
                 needsRecursion);
 
             result.SearchData = searchData;
-            result.BaseDirectory = Normalize(fixedDirectoryPart);
+            result.BaseDirectory = fixedDirectoryPart;
             result.RemainingWildcardDirectory = Normalize(wildcardDirectoryPart);
 
             return SearchAction.RunSearch;
