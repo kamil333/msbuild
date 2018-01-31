@@ -10,7 +10,7 @@ build=false
 ci=false
 configuration="Debug"
 help=false
-nolog=false
+log=false
 pack=false
 prepareMachine=false
 rebuild=false
@@ -39,7 +39,7 @@ function Help() {
   echo ""
   echo "Advanced settings:"
   echo "  -ci                     Set when running on CI server"
-  echo "  -nolog                  Disable logging"
+  echo "  -log                    Enable logging"
   echo "  -prepareMachine         Prepare machine for CI run"
   echo ""
   echo "Command line arguments not listed above are passed through to MSBuild."
@@ -64,8 +64,8 @@ while [[ $# > 0 ]]; do
       Help
       exit 0
       ;;
-    -nolog)
-      nolog=true
+    -log)
+      log=true
       shift 1
       ;;
     -pack)
@@ -333,12 +333,6 @@ LogDir="$ArtifactsConfigurationDir/log"
 VersionsProps="$ScriptRoot/Versions.props"
 
 msbuildToUse="msbuild"
-
-log=false
-if ! $nolog
-then
-  log=true
-fi
 
 if [ "$hostType" != "core" ]; then
   ErrorHostType

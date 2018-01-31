@@ -4,7 +4,7 @@ Param(
   [switch] $ci,
   [string] $configuration = "Debug",
   [switch] $help,
-  [switch] $nolog,
+  [switch] $log,
   [switch] $pack,
   [switch] $prepareMachine,
   [switch] $rebuild,
@@ -37,7 +37,7 @@ function Print-Usage() {
     Write-Host ""
     Write-Host "Advanced settings:"
     Write-Host "  -ci                     Set when running on CI server"
-    Write-Host "  -nolog                  Disable logging"
+    Write-Host "  -log                    Enable logging"
     Write-Host "  -prepareMachine         Prepare machine for CI run"
     Write-Host "  -hostType                   Host / MSBuild flavor to use.  Possible values: full, core"
     Write-Host ""
@@ -334,8 +334,6 @@ $ArtifactsDir = Join-Path $RepoRoot "artifacts"
 $ArtifactsConfigurationDir = Join-Path $ArtifactsDir $configuration
 $LogDir = Join-Path $ArtifactsConfigurationDir "log"
 $VersionsProps = Join-Path $PSScriptRoot "Versions.props"
-
-$log = -not $nolog
 
 if ($hostType -eq '')
 {
