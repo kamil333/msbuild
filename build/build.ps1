@@ -10,7 +10,7 @@ Param(
   [switch] $rebuild,
   [switch] $norestore,
   [switch] $sign,
-  [switch] $skiptests,
+  [switch] $test,
   [switch] $bootstrapOnly,
   [string] $verbosity = "minimal",
   [string] $hostType,
@@ -30,7 +30,7 @@ function Print-Usage() {
     Write-Host "  -norestore              Don't automatically run restore"
     Write-Host "  -build                  Build solution"
     Write-Host "  -rebuild                Rebuild solution"
-    Write-Host "  -skipTests              Don't run tests"
+    Write-Host "  -test                   Run tests"
     Write-Host "  -bootstrapOnly          Don't run build again with bootstrapped MSBuild"
     Write-Host "  -sign                   Sign build outputs"
     Write-Host "  -pack                   Package build outputs into NuGet packages and Willow components"
@@ -337,7 +337,6 @@ $VersionsProps = Join-Path $PSScriptRoot "Versions.props"
 
 $log = -not $nolog
 $restore = -not $norestore
-$test = -not $skiptests
 
 if ($hostType -eq '')
 {

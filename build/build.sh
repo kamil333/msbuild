@@ -16,7 +16,7 @@ prepareMachine=false
 rebuild=false
 norestore=false
 sign=false
-skipTests=false
+test=false
 bootstrapOnly=false
 verbosity="minimal"
 hostType="core"
@@ -32,7 +32,7 @@ function Help() {
   echo "  -norestore              Don't automatically run restore"
   echo "  -build                  Build solution"
   echo "  -rebuild                Rebuild solution"
-  echo "  -skipTests              Don't run tests"
+  echo "  -test                   Run tests"
   echo "  -bootstrapOnly          Don't run build again with bootstrapped MSBuild"
   echo "  -sign                   Sign build outputs"
   echo "  -pack                   Package build outputs into NuGet packages and Willow components"
@@ -88,8 +88,8 @@ while [[ $# > 0 ]]; do
       sign=true
       shift 1
       ;;
-    -skiptests)
-      skipTests=true
+    -test)
+      test=true
       shift 1
       ;;
     -bootstraponly)
@@ -344,12 +344,6 @@ restore=false
 if ! $norestore
 then
   restore=true
-fi
-
-test=false
-if ! $skipTests
-then
-  test=true
 fi
 
 if [ "$hostType" != "core" ]; then
