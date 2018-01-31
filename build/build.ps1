@@ -8,7 +8,7 @@ Param(
   [switch] $pack,
   [switch] $prepareMachine,
   [switch] $rebuild,
-  [switch] $norestore,
+  [switch] $restore,
   [switch] $sign,
   [switch] $test,
   [switch] $bootstrapOnly,
@@ -27,7 +27,7 @@ function Print-Usage() {
     Write-Host "  -help                   Print help and exit"
     Write-Host ""
     Write-Host "Actions:"
-    Write-Host "  -norestore              Don't automatically run restore"
+    Write-Host "  -restore                Run restore"
     Write-Host "  -build                  Build solution"
     Write-Host "  -rebuild                Rebuild solution"
     Write-Host "  -test                   Run tests"
@@ -336,7 +336,6 @@ $LogDir = Join-Path $ArtifactsConfigurationDir "log"
 $VersionsProps = Join-Path $PSScriptRoot "Versions.props"
 
 $log = -not $nolog
-$restore = -not $norestore
 
 if ($hostType -eq '')
 {

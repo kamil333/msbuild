@@ -14,7 +14,7 @@ nolog=false
 pack=false
 prepareMachine=false
 rebuild=false
-norestore=false
+restore=false
 sign=false
 test=false
 bootstrapOnly=false
@@ -29,7 +29,7 @@ function Help() {
   echo "  -help                   Print help and exit"
   echo ""
   echo "Actions:"
-  echo "  -norestore              Don't automatically run restore"
+  echo "  -restore                Run restore"
   echo "  -build                  Build solution"
   echo "  -rebuild                Rebuild solution"
   echo "  -test                   Run tests"
@@ -80,8 +80,8 @@ while [[ $# > 0 ]]; do
       rebuild=true
       shift 1
       ;;
-    -norestore)
-      norestore=true
+    -restore)
+      restore=true
       shift 1
       ;;
     -sign)
@@ -338,12 +338,6 @@ log=false
 if ! $nolog
 then
   log=true
-fi
-
-restore=false
-if ! $norestore
-then
-  restore=true
 fi
 
 if [ "$hostType" != "core" ]; then
