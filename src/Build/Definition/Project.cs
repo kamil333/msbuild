@@ -33,7 +33,7 @@ using System.Globalization;
 using Microsoft.Build.BackEnd.SdkResolution;
 using Microsoft.Build.Globbing;
 using Microsoft.Build.Utilities;
-using Microsoft.Build.Utilities.FileSystem;
+using Microsoft.Build.Shared.FileSystem;
 using EvaluationItemSpec = Microsoft.Build.Evaluation.ItemSpec<Microsoft.Build.Evaluation.ProjectProperty, Microsoft.Build.Evaluation.ProjectItem>;
 using EvaluationItemExpressionFragment = Microsoft.Build.Evaluation.ItemExpressionFragment<Microsoft.Build.Evaluation.ProjectProperty, Microsoft.Build.Evaluation.ProjectItem>;
 

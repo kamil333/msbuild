@@ -4,7 +4,7 @@
 using System;
 using System.IO;
 
-namespace Microsoft.Build.Utilities.FileSystem
+namespace Microsoft.Build.Shared.FileSystem
 {
     /// <summary>
     /// Abstraction over the file tree.

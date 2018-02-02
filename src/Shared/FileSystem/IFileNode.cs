@@ -3,7 +3,7 @@
 
 using System.Collections.Generic;
 
-namespace Microsoft.Build.Utilities.FileSystem
+namespace Microsoft.Build.Shared.FileSystem
 {
     /// <summary>
     /// Abstraction over a file system entry in <see cref="IFileStore"/>

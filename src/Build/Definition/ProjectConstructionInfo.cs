@@ -1,5 +1,5 @@
 ﻿using System.Collections.Generic;
-using Microsoft.Build.Utilities.FileSystem;
+using Microsoft.Build.Shared.FileSystem;
 
 namespace Microsoft.Build.Evaluation
 {

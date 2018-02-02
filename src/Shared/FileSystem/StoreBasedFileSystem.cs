@@ -8,7 +8,7 @@ using System.IO;
 using Microsoft.Build.Shared;
 using Microsoft.Build.Shared.FileSystem;
 
-namespace Microsoft.Build.Utilities.FileSystem
+namespace Microsoft.Build.Shared.FileSystem
 {
     /// <summary>
     ///     Implementation of file system operations directly over the dot net managed layer
