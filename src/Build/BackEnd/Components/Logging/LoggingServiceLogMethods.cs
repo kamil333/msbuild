@@ -559,7 +559,13 @@ namespace Microsoft.Build.BackEnd.Logging
             lock (_lockObject)
             {
                 ErrorUtilities.VerifyThrow(nodeBuildEventContext != null, "Need a nodeBuildEventContext");
-                BuildEventContext projectBuildEventContext = new BuildEventContext(submissionId, nodeBuildEventContext.NodeId, projectInstanceId, NextProjectId, BuildEventContext.InvalidTargetId, BuildEventContext.InvalidTaskId);
+                BuildEventContext projectBuildEventContext = new BuildEventContext(
+                    submissionId,
+                    nodeBuildEventContext.NodeId,
+                    projectInstanceId,
+                    NextProjectId,
+                    BuildEventContext.InvalidTargetId,
+                    BuildEventContext.InvalidTaskId);
 
                 // PERF: Not using VerifyThrow to avoid boxing of projectBuildEventContext.ProjectContextId in the non-error case.
                 if (_projectFileMap.ContainsKey(projectBuildEventContext.ProjectContextId))

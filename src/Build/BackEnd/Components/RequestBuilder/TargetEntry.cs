@@ -426,6 +426,8 @@ namespace Microsoft.Build.BackEnd
                 DataCollection.CommentMarkProfile(8800, beginTargetBuild);
 #endif 
 
+            var logger = DebugUtils.CsvPrinter.WithFileName($"SubmissionId={projectLoggingContext.BuildEventContext?.SubmissionId}_NodeId={projectLoggingContext.BuildEventContext?.NodeId}_{DebugUtils.ExecutionId}_TargetBuilder");
+
             try
             {
                 VerifyState(_state, TargetEntryState.Execution);
@@ -460,6 +462,11 @@ namespace Microsoft.Build.BackEnd
                     }
 
                     targetLoggingContext = projectLoggingContext.LogTargetBatchStarted(projectFullPath, _target, parentTargetName, _buildReason);
+
+                    var eventContext = targetLoggingContext.BuildEventContext;
+
+                    logger.WriteCsvLine(eventContext.NodeId, $"ProjectContextId={eventContext.ProjectContextId}", "Target Started", Name, $"TargetId={eventContext.TargetId}");
+
                     WorkUnitResult bucketResult = null;
                     targetSuccess = false;
 
@@ -577,6 +584,7 @@ namespace Microsoft.Build.BackEnd
                         // last target batch.
                         if (targetLoggingContext != null && i < numberOfBuckets - 1)
                         {
+                            logger.WriteCsvLine(eventContext.NodeId, $"ProjectContextId={eventContext.ProjectContextId}", "Target Finished", Name, $"TargetId={eventContext.TargetId}", $"intermediate batch {i}");
                             targetLoggingContext.LogTargetBatchFinished(projectFullPath, targetSuccess, null);
                             targetLoggingContext = null;
                         }
@@ -668,6 +676,8 @@ namespace Microsoft.Build.BackEnd
                 {
                     if (targetLoggingContext != null)
                     {
+                        var eventContext = targetLoggingContext.BuildEventContext;
+                        logger.WriteCsvLine(eventContext.NodeId, $"ProjectContextId={eventContext.ProjectContextId}", "Target Finished", Name, $"TargetId={eventContext.TargetId}", $"final batch");
                         // log the last target finished since we now have the target outputs. 
                         targetLoggingContext.LogTargetBatchFinished(projectFullPath, targetSuccess, targetOutputItems != null && targetOutputItems.Count > 0 ? targetOutputItems : null);
                     }

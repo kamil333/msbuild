@@ -399,11 +399,11 @@ namespace Microsoft.Build.Execution
                 _buildParameters.BuildId = GetNextBuildId();
 
                 // Initialize components.
-                _nodeManager = ((IBuildComponentHost)this).GetComponent(BuildComponentType.NodeManager) as INodeManager;
-                _taskHostNodeManager = ((IBuildComponentHost)this).GetComponent(BuildComponentType.TaskHostNodeManager) as INodeManager;
-                _scheduler = ((IBuildComponentHost)this).GetComponent(BuildComponentType.Scheduler) as IScheduler;
-                _configCache = ((IBuildComponentHost)this).GetComponent(BuildComponentType.ConfigCache) as IConfigCache;
-                _resultsCache = ((IBuildComponentHost)this).GetComponent(BuildComponentType.ResultsCache) as IResultsCache;
+                _nodeManager = ((IBuildComponentHost) this).GetComponent(BuildComponentType.NodeManager) as INodeManager;
+                _taskHostNodeManager = ((IBuildComponentHost) this).GetComponent(BuildComponentType.TaskHostNodeManager) as INodeManager;
+                _scheduler = ((IBuildComponentHost) this).GetComponent(BuildComponentType.Scheduler) as IScheduler;
+                _configCache = ((IBuildComponentHost) this).GetComponent(BuildComponentType.ConfigCache) as IConfigCache;
+                _resultsCache = ((IBuildComponentHost) this).GetComponent(BuildComponentType.ResultsCache) as IResultsCache;
 
                 _nodeManager.RegisterPacketHandler(NodePacketType.BuildRequestBlocker, BuildRequestBlocker.FactoryForDeserialization, this);
                 _nodeManager.RegisterPacketHandler(NodePacketType.BuildRequestConfiguration, BuildRequestConfiguration.FactoryForDeserialization, this);
@@ -434,6 +434,20 @@ namespace Microsoft.Build.Execution
 
                     _buildParameters.ProjectRootElementCache.DiscardImplicitReferences();
                 }
+
+                _buildParameters.ForwardingLoggers = _buildParameters.ForwardingLoggers.Concat(
+                    new[]
+                    {
+                        new ForwardingLoggerRecord(
+                            new DebugForwardingLogger(),
+                            new LoggerDescription(
+                                loggerClassName: typeof(DebugForwardingLogger).FullName,
+                                loggerAssemblyName: typeof(DebugForwardingLogger).Assembly.GetName().FullName,
+                                loggerAssemblyFile: null,
+                                loggerSwitchParameters: string.Empty,
+                                verbosity: LoggerVerbosity.Normal
+                                ))
+                    });
 
                 // Set up the logging service.
                 ILoggingService loggingService = CreateLoggingService(_buildParameters.Loggers, _buildParameters.ForwardingLoggers, _buildParameters.WarningsAsErrors, _buildParameters.WarningsAsMessages);

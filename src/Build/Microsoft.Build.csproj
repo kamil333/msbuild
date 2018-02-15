@@ -189,6 +189,7 @@
       <Link>SharedUtilities\VisualStudioLocationHelper.cs</Link>
     </Compile>
     <Compile Include="AssemblyInfo.cs" />
+    <Compile Include="BackEnd\BuildManager\DebugForwardingLogger.cs" />
     <Compile Include="BackEnd\BuildManager\BuildManager.cs" />
     <Compile Include="BackEnd\BuildManager\BuildParameters.cs" />
     <Compile Include="BackEnd\BuildManager\BuildSubmission.cs" />
@@ -753,6 +754,7 @@
       <Link>SharedUtilities\ResourceUtilities.cs</Link>
       <ExcludeFromStyleCop>true</ExcludeFromStyleCop>
     </Compile>
+    <Compile Include="..\Shared\DebugUtils.cs" />
     <Compile Include="..\Shared\Tracing.cs" />
     <Compile Include="..\Shared\CoreCLRAssemblyLoader.cs" Condition="'$(NetCoreBuild)'=='true'" />
     <Compile Include="..\Shared\TypeLoader.cs">

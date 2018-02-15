@@ -6,6 +6,7 @@
 //-----------------------------------------------------------------------
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
@@ -86,6 +87,25 @@ namespace Microsoft.Build.BackEnd
         {
             return NodeProviderOutOfProc.GetHostHandshake(_enableReuse);
         }
+
+        private ConcurrentDictionary<int, int> eventArgsCountMap = new ConcurrentDictionary<int, int>();
+        private ConcurrentDictionary<int, int> packetCountMap = new ConcurrentDictionary<int, int>();
+
+        protected override void LogInfoOnSentPacket(INodePacket packet)
+        {
+            if (packet is LogMessagePacket logPacket && logPacket.NodeBuildEvent.HasValue)
+            {
+                var eventArgs = logPacket.NodeBuildEvent.Value.Value;
+
+                var eventArgsCount = eventArgsCountMap.AddOrUpdate(eventArgs.GetHashCode(), 1, (k, v) => v + 1);
+                var packetCount = packetCountMap.AddOrUpdate(packet.GetHashCode(), 1, (k, v) => v + 1);
+
+                var log = DebugUtils.CsvPrinter.WithFileName($"SubmissionId={eventArgs.BuildEventContext.SubmissionId}_NodeId={eventArgs.BuildEventContext.NodeId}_{DebugUtils.ExecutionId}_OutOfProcEndPoint");
+                log.WriteBuildEvent(eventArgs, eventArgsCount, packetCount, packet);
+            }
+        }
+
+
 
         /// <summary>
         /// Returns the client handshake for this node endpoint

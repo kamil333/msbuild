@@ -1288,11 +1288,23 @@ namespace Microsoft.Build.BackEnd.Logging
         {
             if (loggingEvent is BuildEventArgs)
             {
-                RouteBuildEvent((BuildEventArgs)loggingEvent);
+                var eventArgs = (BuildEventArgs)loggingEvent;
+
+                var log = DebugUtils.CsvPrinter.WithFileName($"SubmissionId={eventArgs.BuildEventContext?.SubmissionId}_NodeId={_nodeId}_{DebugUtils.ExecutionId}_LoggingService-RouteBuildEvent");
+                log.WriteBuildEvent(eventArgs);
+
+                RouteBuildEvent(eventArgs);
             }
             else if (loggingEvent is KeyValuePair<int, BuildEventArgs>)
             {
-                RouteBuildEvent((KeyValuePair<int, BuildEventArgs>)loggingEvent);
+                var keyValuePair = (KeyValuePair<int, BuildEventArgs>)loggingEvent;
+
+                var eventArgs = keyValuePair.Value;
+
+                var log = DebugUtils.CsvPrinter.WithFileName($"SubmissionId={eventArgs.BuildEventContext?.SubmissionId}_NodeId={_nodeId}_{DebugUtils.ExecutionId}_LoggingService-RouteBuildEvent-syncID");
+                log.WriteBuildEvent(((KeyValuePair<int, BuildEventArgs>)loggingEvent).Value);
+
+                RouteBuildEvent(keyValuePair);
             }
             else
             {

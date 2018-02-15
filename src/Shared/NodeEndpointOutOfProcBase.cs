@@ -357,7 +357,6 @@ namespace Microsoft.Build.BackEnd
             PipeStream localWritePipe = _pipeClientToServer;
             PipeStream localReadPipe = _pipeServerToClient;
 #endif
-
             AutoResetEvent localPacketAvailable = _packetAvailable;
             AutoResetEvent localTerminatePacketPump = _terminatePacketPump;
             ConcurrentQueue<INodePacket> localPacketQueue = _packetQueue;
@@ -639,6 +638,8 @@ namespace Microsoft.Build.BackEnd
                             INodePacket packet;
                             while (localPacketQueue.TryDequeue(out packet))
                             {
+                                LogInfoOnSentPacket(packet);
+
                                 MemoryStream packetStream = new MemoryStream();
                                 INodePacketTranslator writeTranslator = NodePacketTranslator.GetWriteTranslator(packetStream);
 
@@ -694,6 +695,10 @@ namespace Microsoft.Build.BackEnd
                 }
             }
             while (!exitLoop);
+        }
+
+        protected virtual void LogInfoOnSentPacket(INodePacket packet)
+        {
         }
 
         #endregion
