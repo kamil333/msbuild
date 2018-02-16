@@ -1116,6 +1116,11 @@ namespace Microsoft.Build.CommandLine
                         }
                     }
 
+                    if (Environment.GetEnvironmentVariable("DISABLEINPROCNODE") != null)
+                    {
+                        parameters.DisableInProcNode = true;
+                    }
+
                     BuildManager buildManager = BuildManager.DefaultBuildManager;
 
 #if MSBUILDENABLEVSPROFILING
