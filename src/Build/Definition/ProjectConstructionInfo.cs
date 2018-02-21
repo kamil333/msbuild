@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Microsoft.Build.Utilities.FileSystem;
 
 namespace Microsoft.Build.Evaluation
 {
@@ -36,8 +37,16 @@ namespace Microsoft.Build.Evaluation
         /// The <see cref="EvaluationContext"/> to use for evaluation.
         /// The <see cref="Project"/> will keep the reference to the context because
         /// some of its methods trigger hidden reevaluations, and those hidden reevaluations need the initial context.
-        /// The stored context can be overidden via <see cref="Project.ReevaluateIfNecessary(EvaluationContext)"/>
+        /// The stored context can be overidden via <see cref="Project.ReevaluateIfNecessary(EvaluationContext, IFileStore)"/>
         /// </summary>
         public EvaluationContext EvaluationContext { get; set; }
+
+        /// <summary>
+        /// The <see cref="IFileStore"/> to use during evaluation.
+        /// The <see cref="Project"/> will keep the reference to the store because
+        /// some of its methods trigger hidden reevaluations, and those hidden reevaluations need the initial store.
+        /// The initial store can be overidden via <see cref="Project.ReevaluateIfNecessary(EvaluationContext, IFileStore)"/>
+        /// </summary>
+        public IFileStore FileStore { get; set; }
     }
 }
