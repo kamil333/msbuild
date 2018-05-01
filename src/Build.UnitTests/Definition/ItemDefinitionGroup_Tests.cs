@@ -19,7 +19,7 @@ using Microsoft.Build.Evaluation;
 using Microsoft.Build.Framework;
 using Microsoft.Build.Shared;
 using System.Threading;
-
+using Shouldly;
 using TaskItem = Microsoft.Build.Execution.ProjectItemInstance.TaskItem;
 using InvalidProjectFileException = Microsoft.Build.Exceptions.InvalidProjectFileException;
 using Xunit;
@@ -685,6 +685,47 @@ namespace Microsoft.Build.UnitTests.Definition
 
             Assert.Equal("M-A(b)", withMetaItem.GetMetadata("MetaA"));
             Assert.Equal("M-B(b)", withMetaItem.GetMetadata("MetaB"));
+        }
+
+        /// <summary>
+        /// Tests that item definition metadata is correctly copied to a destination item
+        /// </summary>
+        [Fact]
+        public void ItemDefinitionMetadataShouldBeOverridenByKeepMetadata()
+        {
+            Project p = new Project(XmlReader.Create(new StringReader(
+@"<Project DefaultTargets=""Test"">
+
+  <ItemDefinitionGroup>
+    <A>
+      <bar>barA</bar>
+    </A>
+  </ItemDefinitionGroup>
+  
+  <ItemGroup>
+    <A Include=""1"" foo=""foo1"" />
+    <A Include=""2"" foo=""foo2"" bar=""bar2""/>
+    <A Include=""3"" />
+  </ItemGroup>
+  
+  <Target Name=""Test"">
+    <ItemGroup>
+      <B Include=""@(A)"" KeepMetadata=""foo"" />
+      <C Include=""@(A)"" RemoveMetadata=""bar"" />
+    </ItemGroup>
+
+    <Message Importance=""high"" Text=""%(B.Identity) %(B.foo) %(B.bar)""/>
+  </Target>
+</Project>")));
+
+            var result = BuildManager.DefaultBuildManager.Build(
+                new BuildParameters(),
+                new BuildRequestData(p.CreateProjectInstance(), new[] {"test"}, null, BuildRequestDataFlags.ProvideProjectStateAfterBuild));
+
+            foreach (var item in result.ProjectStateAfterBuild.Items.Where(i => i.ItemType.Equals("B") || i.ItemType.Equals("C")))
+            {
+                item.GetMetadataValue("bar").ShouldBe(string.Empty);
+            }
         }
 
         #region Project tests
