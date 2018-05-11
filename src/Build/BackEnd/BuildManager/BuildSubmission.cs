@@ -7,6 +7,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -33,6 +34,7 @@ namespace Microsoft.Build.Execution
     /// <remarks>
     /// This class is thread-safe.
     /// </remarks>
+    [DebuggerDisplay("{DebuggerDisplay,nq}")]
     public class BuildSubmission
     {
         /// <summary>
@@ -64,6 +66,8 @@ namespace Microsoft.Build.Execution
         /// Flag indicating whether synchronous wait should support legacy threading semantics.
         /// </summary>
         private bool _legacyThreadingSemantics;
+
+        private string DebuggerDisplay => $"Submission Id={SubmissionId}, PathBased = {BuildRequestData.ProjectInstance == null}, IsCompleted = {IsCompleted}, Path = {BuildRequestData.ProjectFullPath ?? BuildRequestData.ProjectInstance?.FullPath}";
 
         /// <summary>
         /// Constructor

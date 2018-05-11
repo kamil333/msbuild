@@ -192,6 +192,7 @@
     <Compile Include="BackEnd\BuildManager\BuildManager.cs" />
     <Compile Include="BackEnd\BuildManager\BuildParameters.cs" />
     <Compile Include="BackEnd\BuildManager\BuildSubmission.cs" />
+    <Compile Include="BackEnd\BuildManager\DebugLogger.cs" />
     <Compile Include="BackEnd\BuildManager\LegacyThreadingData.cs" />
     <Compile Include="BackEnd\BuildManager\RequestedProjectState.cs" />
     <Compile Include="BackEnd\Components\BuildComponentFactoryCollection.cs" />

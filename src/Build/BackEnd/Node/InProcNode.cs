@@ -120,6 +120,10 @@ namespace Microsoft.Build.BackEnd
         /// </summary>
         private RequestCompleteDelegate _requestCompleteEventHandler;
 
+        private DebugUtils.CsvPrinter _debugLogger;
+
+        private static int _instanceCount;
+
         /// <summary>
         /// Constructor.
         /// </summary>
@@ -139,6 +143,8 @@ namespace Microsoft.Build.BackEnd
             _newConfigurationRequestEventHandler = new NewConfigurationRequestDelegate(OnNewConfigurationRequest);
             _requestBlockedEventHandler = new RequestBlockedDelegate(OnNewRequest);
             _requestCompleteEventHandler = new RequestCompleteDelegate(OnRequestComplete);
+
+            _debugLogger = DebugUtils.CsvPrinter.WithExecutionId($"InprocNode_{Interlocked.Increment(ref _instanceCount)}_BuildManager={_componentHost.GetHashCode()}_{_componentHost.Name}_");
         }
 
         #region INode Members
@@ -166,6 +172,8 @@ namespace Microsoft.Build.BackEnd
                     {
                         case 0:
                             {
+                                _debugLogger.WriteCsvLine("ShutDown");
+
                                 NodeEngineShutdownReason shutdownReason = HandleShutdown(out shutdownException);
                                 if (_componentHost.BuildParameters.ShutdownInProcNodeOnBuildFinish)
                                 {
@@ -261,6 +269,8 @@ namespace Microsoft.Build.BackEnd
         /// </summary>
         private void OnRequestComplete(BuildRequest request, BuildResult result)
         {
+            var configCache = (IConfigCache)_componentHost.GetComponent(BuildComponentType.ConfigCache);
+            _debugLogger.WriteCsvLine("Send", "OnRequestComplete", $"SubmissionId={request.SubmissionId}", configCache[request.ConfigurationId].ProjectFullPath, $"Result={result.OverallResult}", $"Exception={result.Exception?.Message ?? string.Empty}");
             if (_nodeEndpoint.LinkStatus == LinkStatus.Active)
             {
                 _nodeEndpoint.SendData(result);
@@ -294,6 +304,7 @@ namespace Microsoft.Build.BackEnd
         /// </summary>
         private void OnLoggingThreadException(Exception e)
         {
+            _debugLogger.WriteCsvLine("Send", "OnLoggingThreadException", e.Message);
             OnEngineException(e);
         }
 
@@ -302,6 +313,7 @@ namespace Microsoft.Build.BackEnd
         /// </summary>
         private void OnEngineException(Exception e)
         {
+            _debugLogger.WriteCsvLine("Send", "OnEngineException", $"Exception={e?.Message ?? string.Empty}", $"Stack=\n{e?.StackTrace ?? string.Empty}");
             _shutdownException = e;
             _shutdownReason = NodeEngineShutdownReason.Error;
             _shutdownEvent.Set();
@@ -392,6 +404,7 @@ namespace Microsoft.Build.BackEnd
         /// </summary>
         private void HandlePacket(INodePacket packet)
         {
+            _debugLogger.WriteNodePacket(packet, (IConfigCache)_componentHost.GetComponent(BuildComponentType.ConfigCache));
             switch (packet.Type)
             {
                 case NodePacketType.BuildRequest:

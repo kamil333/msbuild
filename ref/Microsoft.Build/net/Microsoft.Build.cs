@@ -1054,6 +1054,7 @@ namespace Microsoft.Build.Execution
         Failure = 1,
         Success = 0,
     }
+    [System.Diagnostics.DebuggerDisplayAttribute("{DebuggerDisplay,nq}")]
     public partial class BuildSubmission
     {
         internal BuildSubmission() { }

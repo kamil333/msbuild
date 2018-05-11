@@ -15,6 +15,7 @@ using Microsoft.Build.Shared;
 
 using BuildParameters = Microsoft.Build.Execution.BuildParameters;
 using System.Globalization;
+using Microsoft.Build.Framework;
 
 namespace Microsoft.Build.BackEnd
 {
@@ -214,6 +215,11 @@ namespace Microsoft.Build.BackEnd
         public void SendData(INodePacket packet)
         {
             ErrorUtilities.VerifyThrow(_status == LinkStatus.Active, "Cannot send when link status is not active. Current status {0}", _status);
+
+            if (packet is LogMessagePacket logPacket && logPacket.NodeBuildEvent?.Value is BuildErrorEventArgs errorArgs)
+            {
+                Debugger.Break();
+            }
 
             if (_mode == EndpointMode.Synchronous)
             {
@@ -433,6 +439,11 @@ namespace Microsoft.Build.BackEnd
                                 INodePacket packet;
                                 while (_packetQueue.TryDequeue(out packet))
                                 {
+                                    if (packet is LogMessagePacket logPacket && logPacket.NodeBuildEvent?.Value is BuildErrorEventArgs errorArgs)
+                                    {
+                                        Debugger.Break();
+                                    }
+
                                     _peerEndpoint._packetFactory.RoutePacket(0, packet);
                                 }
                             }

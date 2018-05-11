@@ -213,6 +213,8 @@ namespace Microsoft.Build.Execution
         /// </summary>
         private bool _disposed = false;
 
+        private DebugUtils.CsvPrinter _debugLogger;
+
 #if DEBUG
         /// <summary>
         /// <code>true</code> to wait for a debugger to be attached, otherwise <code>false</code>.
@@ -229,6 +231,8 @@ namespace Microsoft.Build.Execution
             : this("Unnamed")
         {
         }
+
+        private static int _instanceCount;
 
         /// <summary>
         /// Creates a new build manager with an arbitrary distinct name.
@@ -255,6 +259,10 @@ namespace Microsoft.Build.Execution
             _projectFinishedEventHandler = OnProjectFinished;
             _loggingThreadExceptionEventHandler = OnThreadException;
             _legacyThreadingData = new LegacyThreadingData();
+
+            _debugLogger = DebugUtils.CsvPrinter.WithExecutionId($"BuildManager_{Interlocked.Increment(ref _instanceCount)}_{GetHashCode()}_{hostName}_");
+
+            _debugLogger.WriteCsvLine("Constructor", $"\n{Environment.StackTrace}");
         }
 
         /// <summary>
@@ -360,6 +368,8 @@ namespace Microsoft.Build.Execution
 
                 // Initialize additional build parameters.
                 _buildParameters.BuildId = GetNextBuildId();
+
+                _debugLogger.WriteCsvLine("BeginBuild", $"KeepInProcNode={!_buildParameters.ShutdownInProcNodeOnBuildFinish}", $"DisableInprocNode={_buildParameters.DisableInProcNode}", $"MaxNodeCount={_buildParameters.MaxNodeCount}", $"\n{Environment.StackTrace}");
 
                 // Initialize components.
                 _nodeManager = ((IBuildComponentHost)this).GetComponent(BuildComponentType.NodeManager) as INodeManager;
@@ -468,7 +478,9 @@ namespace Microsoft.Build.Execution
                         {
                             BuildResult result = new BuildResult(submission.BuildRequest, new BuildAbortedException());
                             _resultsCache.AddResult(result);
+                            _debugLogger.WriteCsvLine("CancellAllSubmissionsBeforeCallback");
                             submission.CompleteResults(result);
+                            _debugLogger.WriteCsvLine("CancellAllSubmissionsAfterCallback");
                         }
                     }
 
@@ -538,6 +550,8 @@ namespace Microsoft.Build.Execution
                 BuildSubmission newSubmission = new BuildSubmission(this, GetNextSubmissionId(), requestData, _buildParameters.LegacyThreadingSemantics);
                 _buildSubmissions.Add(newSubmission.SubmissionId, newSubmission);
                 _noActiveSubmissionsEvent.Reset();
+
+                _debugLogger.WriteCsvLine("PendBuildRequest", $"FileBased={requestData.ProjectInstance == null}", requestData.ProjectFullPath, $"Targets=[{string.Join(",", requestData.TargetNames)}]");
                 return newSubmission;
             }
         }
@@ -579,6 +593,8 @@ namespace Microsoft.Build.Execution
                 }
 
                 _buildManagerState = BuildManagerState.WaitingForBuildToComplete;
+
+                _debugLogger.WriteCsvLine("EndBuild", $"\n{Environment.StackTrace}");
             }
 
             ILoggingService loggingService = ((IBuildComponentHost)this).LoggingService;
@@ -844,8 +860,10 @@ namespace Microsoft.Build.Execution
                     {
                         // We were already canceled!
                         BuildResult result = new BuildResult(submission.BuildRequest, new BuildAbortedException());
+                        _debugLogger.WriteCsvLine("ExecuteSubmissionBeforeCallback");
                         submission.CompleteResults(result);
                         submission.CompleteLogging(true);
+                        _debugLogger.WriteCsvLine("ExecuteSubmissionAfterCallback");
                         CheckSubmissionCompletenessAndRemove(submission);
                         return;
                     }
@@ -853,6 +871,9 @@ namespace Microsoft.Build.Execution
                     // Submit the build request.
                     BuildRequestBlocker blocker = new BuildRequestBlocker(-1, Array.Empty<string>(),
                         new BuildRequest[] {submission.BuildRequest});
+
+                    _debugLogger.WriteCsvLine("Execute Submission", $"SubmissionId={submission.SubmissionId}", newConfiguration.ProjectFullPath);
+
                     _workQueue.Post(() =>
                     {
                         try
@@ -1010,6 +1031,8 @@ namespace Microsoft.Build.Execution
         {
             lock (_syncLock)
             {
+                _debugLogger.WriteNodePacket(packet, _configCache);
+
                 if (_shuttingDown && packet.Type != NodePacketType.NodeShutdown)
                 {
                     // Console.WriteLine("Discarding packet {0} from node {1} because we are shutting down.", packet.Type, node);
@@ -1065,8 +1088,10 @@ namespace Microsoft.Build.Execution
             if (submission.BuildRequest != null)
             {
                 BuildResult result = new BuildResult(submission.BuildRequest, ex);
+                _debugLogger.WriteCsvLine("HandleExecuteSubmissionExceptionBeforeCallback");
                 submission.CompleteResults(result);
                 submission.CompleteLogging(true);
+                _debugLogger.WriteCsvLine("HandleExecuteSubmissionExceptionAfterCallback");
             }
 
             _overallBuildSuccess = false;
@@ -1474,7 +1499,9 @@ namespace Microsoft.Build.Execution
                     BuildResult result = _resultsCache.GetResultsForConfiguration(submission.BuildRequest.ConfigurationId) ??
                                          new BuildResult(submission.BuildRequest, new BuildAbortedException());
 
+                    _debugLogger.WriteCsvLine("CheckForActiveBeforeCallback");
                     submission.CompleteResults(result);
+                    _debugLogger.WriteCsvLine("CheckForActiveAfterCallback");
 
                     // If we never received a project started event, consider logging complete anyhow, since the nodes have
                     // shut down.
@@ -1581,7 +1608,11 @@ namespace Microsoft.Build.Execution
                 {
                     BuildSubmission submission = _buildSubmissions[result.SubmissionId];
 
+                    _debugLogger.WriteCsvLine("ReportResultsToSubmission", submission.BuildRequestData.ProjectFullPath, $"Result={result.OverallResult}", $"Exception={result.Exception?.Message ?? string.Empty}");
+
+                    _debugLogger.WriteCsvLine("ReportResultsToSubmissionBeforeCallback");
                     submission.CompleteResults(result);
+                    _debugLogger.WriteCsvLine("ReportResultsToSubmissionAfterCallback");
 
                     // If the request failed because we caught an exception from the loggers, we can assume we will receive no more logging messages for
                     // this submission, therefore set the logging as complete. IntrnalLoggerExceptions are unhandled exceptions from the logger. If the logger author does
@@ -1591,7 +1622,9 @@ namespace Microsoft.Build.Execution
                     // the exception error message rather than the whole stack trace.
                     if (result.Exception is InternalLoggerException || result.Exception is LoggerException || result.Exception is InvalidOperationException)
                     {
+                        _debugLogger.WriteCsvLine("ReportResultsToSubmissionBeforeCompleteLogging");
                         submission.CompleteLogging(false /* waitForLoggingThread */);
+                        _debugLogger.WriteCsvLine("ReportResultsToSubmissionAfterCompleteLogging");
                     }
 
                     _overallBuildSuccess = _overallBuildSuccess && (_buildSubmissions[result.SubmissionId].BuildResult.OverallResult == BuildResultCode.Success);
@@ -1614,6 +1647,7 @@ namespace Microsoft.Build.Execution
                     SetOverallResultIfWarningsAsErrors(submission.BuildResult);
 
                     _buildSubmissions.Remove(submission.SubmissionId);
+                    _debugLogger.WriteCsvLine($"Removed submission", $"SubmissionId={submission.SubmissionId}");
 
                     // Clear all cached SDKs for the submission
                     SdkResolverService.ClearCache(submission.SubmissionId);
