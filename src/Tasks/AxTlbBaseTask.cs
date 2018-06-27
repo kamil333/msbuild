@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using System.Reflection;
+using Microsoft.Build.Shared.FileSystem;
 
 namespace Microsoft.Build.Tasks
 {

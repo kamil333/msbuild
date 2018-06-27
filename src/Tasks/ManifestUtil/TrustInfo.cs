@@ -11,6 +11,7 @@ using System.Runtime.InteropServices;
 using System.Security;
 using System.Security.Permissions;
 using System.Xml;
+using Microsoft.Build.Shared.FileSystem;
 
 namespace Microsoft.Build.Tasks.Deployment.ManifestUtilities
 {

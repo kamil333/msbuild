@@ -8,6 +8,7 @@ using System.Xml;
 using System.Xml.Schema;
 
 using Microsoft.Build.Shared;
+using Microsoft.Build.Shared.FileSystem;
 
 namespace Microsoft.Build.CommandLine
 {

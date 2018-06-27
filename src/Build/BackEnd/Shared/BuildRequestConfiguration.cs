@@ -10,6 +10,7 @@ using Microsoft.Build.Collections;
 using System.Diagnostics;
 using System.IO;
 using Microsoft.Build.Evaluation;
+using Microsoft.Build.Shared.FileSystem;
 
 namespace Microsoft.Build.BackEnd
 {

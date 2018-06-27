@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Resources;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
 
 namespace Microsoft.Build.Tasks.Deployment.ManifestUtilities
 {

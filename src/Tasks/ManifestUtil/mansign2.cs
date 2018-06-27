@@ -15,6 +15,7 @@ using System.Text;
 using System.Xml;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography.Pkcs;
+using Microsoft.Build.Tasks;
 using Microsoft.Win32;
 
 using _FILETIME = System.Runtime.InteropServices.ComTypes.FILETIME;

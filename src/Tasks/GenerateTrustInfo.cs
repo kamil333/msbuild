@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using Microsoft.Build.Framework;
+using Microsoft.Build.Shared.FileSystem;
 using Microsoft.Build.Tasks.Deployment.ManifestUtilities;
 using FrameworkNameVersioning = System.Runtime.Versioning.FrameworkName;
 

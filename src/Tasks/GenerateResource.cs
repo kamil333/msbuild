@@ -40,6 +40,7 @@ using System.Runtime.Versioning;
 
 using Microsoft.Build.Utilities;
 using System.Xml.Linq;
+using Microsoft.Build.Shared.FileSystem;
 
 namespace Microsoft.Build.Tasks
 {

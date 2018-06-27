@@ -3,6 +3,7 @@ using System.IO;
 using System.IO.Compression;
 using Microsoft.Build.Framework;
 using Microsoft.Build.Shared;
+using Microsoft.Build.Shared.FileSystem;
 
 namespace Microsoft.Build.Logging
 {

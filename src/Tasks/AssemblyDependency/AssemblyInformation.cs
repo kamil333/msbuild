@@ -13,6 +13,7 @@ using System.Reflection;
 using System.Text;
 
 using Microsoft.Build.Shared;
+using Microsoft.Build.Shared.FileSystem;
 #if !FEATURE_ASSEMBLY_LOADFROM || MONO
 using System.Reflection.PortableExecutable;
 using System.Reflection.Metadata;

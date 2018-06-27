@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Xml;
 using Microsoft.Build.Shared;
+using Microsoft.Build.Shared.FileSystem;
 
 namespace Microsoft.Build.Utilities
 {

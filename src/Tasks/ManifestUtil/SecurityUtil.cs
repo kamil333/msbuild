@@ -21,6 +21,7 @@ using System.Security.Permissions;
 using System.Security.Policy;
 using System.Text;
 using System.Xml;
+using Microsoft.Build.Shared.FileSystem;
 using FrameworkNameVersioning = System.Runtime.Versioning.FrameworkName;
 
 namespace Microsoft.Build.Tasks.Deployment.ManifestUtilities
