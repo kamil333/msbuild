@@ -381,7 +381,7 @@ namespace Microsoft.Build.Utilities
 
                     trackerPath = Path.Combine(trackerPath, s_TrackerFilename);
 
-                    if (File.Exists(trackerPath))
+                    if (FileSystems.Default.FileExists(trackerPath))
                     {
                         return trackerPath;
                     }
@@ -481,7 +481,7 @@ namespace Microsoft.Build.Utilities
             {
                 trackerPath = Path.Combine(rootPath, filename);
 
-                if (!File.Exists(trackerPath))
+                if (!FileSystems.Default.FileExists(trackerPath))
                 {
                     // if an override path was specified, that's it -- we don't want to fall back if the file
                     // is not found there.
@@ -529,7 +529,7 @@ namespace Microsoft.Build.Utilities
                 string progfilesPath = Path.Combine(FrameworkLocationHelper.GenerateProgramFiles32(),
                     "MSBuild", MSBuildConstants.CurrentProductVersion, "FileTracker", s_FileTrackerFilename);
 
-                if (File.Exists(progfilesPath))
+                if (FileSystems.Default.FileExists(progfilesPath))
                 {
                     return progfilesPath;
                 }

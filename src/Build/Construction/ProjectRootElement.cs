@@ -1589,7 +1589,7 @@ namespace Microsoft.Build.Construction
         /// </summary>
         public void ReloadFrom(string path, bool throwIfUnsavedChanges = true, bool? preserveFormatting = null)
         {
-            ErrorUtilities.VerifyThrowInvalidOperation(File.Exists(path), "FileToReloadFromDoesNotExist", path);
+            ErrorUtilities.VerifyThrowInvalidOperation(FileSystems.Default.FileExists(path), "FileToReloadFromDoesNotExist", path);
 
             XmlDocumentWithLocation DocumentProducer(bool shouldPreserveFormatting) => LoadDocument(path, shouldPreserveFormatting);
             ReloadFrom(DocumentProducer, throwIfUnsavedChanges, preserveFormatting);
@@ -1861,7 +1861,7 @@ namespace Microsoft.Build.Construction
             //
             const int maxSizeToConsiderEmpty = 100;
 
-            if (!File.Exists(path))
+            if (!FileSystems.Default.FileExists(path))
             {
                 // Non-existent files are not treated as empty
                 //

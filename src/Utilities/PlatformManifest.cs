@@ -90,7 +90,7 @@ namespace Microsoft.Build.Utilities
             {
                 string platformManifestPath = Path.Combine(_pathToManifest, "Platform.xml");
 
-                if (File.Exists(platformManifestPath))
+                if (FileSystems.Default.FileExists(platformManifestPath))
                 {
                     XmlDocument doc = new XmlDocument();
                     XmlReaderSettings readerSettings = new XmlReaderSettings { DtdProcessing = DtdProcessing.Ignore };

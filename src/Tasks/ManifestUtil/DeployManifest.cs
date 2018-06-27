@@ -144,7 +144,7 @@ namespace Microsoft.Build.Tasks.Deployment.ManifestUtilities
                 // Get the redistlist file path
                 string redistListFilePath = GetRedistListFilePath(referenceAssemblyPath);
 
-                if (File.Exists(redistListFilePath))
+                if (FileSystems.Default.FileExists(redistListFilePath))
                 {
                     installableFramework = GetInstallableFramework(redistListFilePath);
                 }
@@ -579,7 +579,7 @@ namespace Microsoft.Build.Tasks.Deployment.ManifestUtilities
                 {
                     manifestPath = Path.Combine(Path.GetDirectoryName(SourcePath), _entryPoint.TargetPath);
                 }
-                if (File.Exists(manifestPath))
+                if (FileSystems.Default.FileExists(manifestPath))
                 {
                     ApplicationManifest entryPointManifest = ManifestReader.ReadManifest(manifestPath, false) as ApplicationManifest;
                     if (entryPointManifest != null)

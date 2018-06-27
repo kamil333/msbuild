@@ -65,7 +65,7 @@ namespace Microsoft.Build.Tasks
                             if (product.ValueCount > 0)
                             {
                                 string folder = (string)product.GetValue("");
-                                if (Directory.Exists(folder))
+                                if (FileSystems.Default.DirectoryExists(folder))
                                 {
                                     string regkeyAlias = aliasKey + "\\" + productName;
                                     directories[regkeyAlias] = folder;

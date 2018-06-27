@@ -144,7 +144,7 @@ namespace Microsoft.Build.Tasks
 
             Log.LogMessageFromResources(MessageImportance.Low, "UnregisterAssembly.UnregisteringAssembly", assemblyPath);
 
-            if (File.Exists(assemblyPath))
+            if (FileSystems.Default.FileExists(assemblyPath))
             {
                 try
                 {
@@ -218,7 +218,7 @@ namespace Microsoft.Build.Tasks
 
             Log.LogMessageFromResources(MessageImportance.Low, "UnregisterAssembly.UnregisteringTypeLib", typeLibPath);
 
-            if (File.Exists(typeLibPath))
+            if (FileSystems.Default.FileExists(typeLibPath))
             {
                 try
                 {

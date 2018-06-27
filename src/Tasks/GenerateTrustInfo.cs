@@ -42,7 +42,7 @@ namespace Microsoft.Build.Tasks
             }
 
             // Read trust-info from app.manifest
-            if (BaseManifest != null && File.Exists(BaseManifest.ItemSpec))
+            if (BaseManifest != null && FileSystems.Default.FileExists(BaseManifest.ItemSpec))
             {
                 try
                 {

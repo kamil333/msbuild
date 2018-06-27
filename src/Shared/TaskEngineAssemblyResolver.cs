@@ -101,7 +101,7 @@ namespace Microsoft.Build.BackEnd.Logging
             // Is this our task assembly?
             if (_taskAssemblyFile != null)
             {
-                if (File.Exists(_taskAssemblyFile))
+                if (FileSystems.Default.FileExists(_taskAssemblyFile))
                 {
                     try
                     {

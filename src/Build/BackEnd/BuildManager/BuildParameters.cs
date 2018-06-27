@@ -881,7 +881,7 @@ namespace Microsoft.Build.Execution
                 return true;
             }
 
-            if (File.Exists(path))
+            if (FileSystems.Default.FileExists(path))
             {
                 s_msbuildExeKnownToExistAt = path;
                 return true;

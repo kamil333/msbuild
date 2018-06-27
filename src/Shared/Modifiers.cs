@@ -529,7 +529,7 @@ namespace Microsoft.Build.Shared
                         // to unescape first.
                         string unescapedItemSpec = EscapingUtilities.UnescapeAll(itemSpec);
 
-                        if (File.Exists(unescapedItemSpec))
+                        if (FileSystems.Default.FileExists(unescapedItemSpec))
                         {
                             modifiedItemSpec = File.GetCreationTime(unescapedItemSpec).ToString(FileTimeFormat, null);
                         }
@@ -545,7 +545,7 @@ namespace Microsoft.Build.Shared
                         // to unescape first.
                         string unescapedItemSpec = EscapingUtilities.UnescapeAll(itemSpec);
 
-                        if (File.Exists(unescapedItemSpec))
+                        if (FileSystems.Default.FileExists(unescapedItemSpec))
                         {
                             modifiedItemSpec = File.GetLastAccessTime(unescapedItemSpec).ToString(FileTimeFormat, null);
                         }

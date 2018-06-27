@@ -35,7 +35,7 @@ namespace Microsoft.Build.Tasks
             {
                 if (!string.IsNullOrEmpty(stateFile))
                 {
-                    if (File.Exists(stateFile))
+                    if (FileSystems.Default.FileExists(stateFile))
                     {
                         File.Delete(stateFile);
                     }
@@ -71,7 +71,7 @@ namespace Microsoft.Build.Tasks
             // then we create one.  
             try
             {
-                if (!string.IsNullOrEmpty(stateFile) && File.Exists(stateFile))
+                if (!string.IsNullOrEmpty(stateFile) && FileSystems.Default.FileExists(stateFile))
                 {
                     using (FileStream s = new FileStream(stateFile, FileMode.Open))
                     {
@@ -133,7 +133,7 @@ namespace Microsoft.Build.Tasks
             {
                 if (!string.IsNullOrEmpty(stateFile))
                 {
-                    if (File.Exists(stateFile))
+                    if (FileSystems.Default.FileExists(stateFile))
                     {
                         File.Delete(stateFile);
                     }

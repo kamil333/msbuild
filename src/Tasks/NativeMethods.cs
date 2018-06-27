@@ -855,12 +855,12 @@ namespace Microsoft.Build.Tasks
                 return MoveFileExWindows(existingFileName, newFileName, flags);
             }
 
-            if (!File.Exists(existingFileName))
+            if (!FileSystems.Default.FileExists(existingFileName))
             {
                 return false;
             }
 
-            var targetExists = File.Exists(newFileName);
+            var targetExists = FileSystems.Default.FileExists(newFileName);
 
             if (targetExists
                 && ((flags & MoveFileFlags.MOVEFILE_REPLACE_EXISTING) != MoveFileFlags.MOVEFILE_REPLACE_EXISTING))
@@ -1532,7 +1532,7 @@ typedef enum _tagAssemblyComparisonResult
                 }
                 else
                 {
-                    if (Directory.Exists(s_gacPath))
+                    if (FileSystems.Default.DirectoryExists(s_gacPath))
                     {
                         if (!string.IsNullOrWhiteSpace(assemblyName))
                         {
@@ -1658,7 +1658,7 @@ typedef enum _tagAssemblyComparisonResult
                 var path = Path.Combine(s_gacPath, assemblyNameVersion.Name);
 
                 // See if we can find the name as a directory in the GAC
-                if (Directory.Exists(path))
+                if (FileSystems.Default.DirectoryExists(path))
                 {
                     // Since we have a strong name, create the path to the dll
                     path = Path.Combine(
@@ -1671,7 +1671,7 @@ typedef enum _tagAssemblyComparisonResult
                                 .Aggregate(new StringBuilder(), (builder, v) => builder.Append(v.ToString("x2")))),
                         assemblyNameVersion.Name + ".dll");
 
-                    if (File.Exists(path))
+                    if (FileSystems.Default.FileExists(path))
                     {
                         return path;
                     }

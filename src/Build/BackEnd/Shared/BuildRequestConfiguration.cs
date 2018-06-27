@@ -840,7 +840,7 @@ namespace Microsoft.Build.BackEnd
         internal void ClearCacheFile()
         {
             string cacheFile = GetCacheFile();
-            if (File.Exists(cacheFile))
+            if (FileSystems.Default.FileExists(cacheFile))
             {
                 FileUtilities.DeleteNoThrow(cacheFile);
             }

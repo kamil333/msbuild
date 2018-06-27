@@ -192,7 +192,7 @@ namespace Microsoft.Build.Evaluation
 
                         // Other toolsets are installed in the xbuild directory
                         var xbuildToolsetsDir = Path.Combine(libraryPath, $"xbuild{Path.DirectorySeparatorChar}");
-                        if (Directory.Exists(xbuildToolsetsDir))
+                        if (FileSystems.Default.DirectoryExists(xbuildToolsetsDir))
                         {
                             var r = new Regex(Regex.Escape(xbuildToolsetsDir) + @"\d+\.\d+");
                             foreach (var d in Directory.GetDirectories(xbuildToolsetsDir).Where(d => r.IsMatch(d)))

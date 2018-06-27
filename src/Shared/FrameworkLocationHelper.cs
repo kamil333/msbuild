@@ -864,7 +864,7 @@ namespace Microsoft.Build.Shared
             if (!String.IsNullOrEmpty(combinedPath))
             {
                 combinedPath = Path.GetFullPath(combinedPath);
-                if (Directory.Exists(combinedPath))
+                if (FileSystems.Default.DirectoryExists(combinedPath))
                 {
                     return combinedPath;
                 }
@@ -1041,7 +1041,7 @@ namespace Microsoft.Build.Shared
             string programFilesReferenceAssemblyDirectory = Path.Combine(programFilesReferenceAssemblyLocation, versionPrefix);
             string referenceAssemblyDirectory = null;
 
-            if (Directory.Exists(programFilesReferenceAssemblyDirectory))
+            if (FileSystems.Default.DirectoryExists(programFilesReferenceAssemblyDirectory))
             {
                 referenceAssemblyDirectory = programFilesReferenceAssemblyDirectory;
             }
@@ -1339,7 +1339,7 @@ namespace Microsoft.Build.Shared
                 // .net was improperly uninstalled: msbuild.exe isn't there
                 if (this._hasMsBuild &&
                     generatedPathToDotNetFramework != null &&
-                    !File.Exists(Path.Combine(generatedPathToDotNetFramework, NativeMethodsShared.IsWindows ? "MSBuild.exe" : "mcs.exe")))
+                    !FileSystems.Default.FileExists(Path.Combine(generatedPathToDotNetFramework, NativeMethodsShared.IsWindows ? "MSBuild.exe" : "mcs.exe")))
                 {
                     return null;
                 }
@@ -1375,7 +1375,7 @@ namespace Microsoft.Build.Shared
                         frameworkPath = Path.Combine(frameworkPath, this.Version.ToString());
                     }
 
-                    if (!string.IsNullOrEmpty(frameworkPath) && Directory.Exists(frameworkPath))
+                    if (!string.IsNullOrEmpty(frameworkPath) && FileSystems.Default.DirectoryExists(frameworkPath))
                     {
                         generatedPathToDotNetFrameworkSdkTools = frameworkPath;
                     }
@@ -1477,7 +1477,7 @@ namespace Microsoft.Build.Shared
                     // when a user requests the 40 reference assembly path we don't need to read the redist list because we will not be chaining so we may as well just
                     // generate the path and save us some time.
                     string referencePath = GenerateReferenceAssemblyPath(FrameworkLocationHelper.programFilesReferenceAssemblyLocation, this.FrameworkName);
-                    if (Directory.Exists(referencePath))
+                    if (FileSystems.Default.DirectoryExists(referencePath))
                     {
                         this._pathToDotNetFrameworkReferenceAssemblies = FileUtilities.EnsureTrailingSlash(referencePath);
                     }

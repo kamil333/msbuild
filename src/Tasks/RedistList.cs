@@ -297,7 +297,7 @@ namespace Microsoft.Build.Tasks
                 {
                     string redistDirectory = Path.Combine(frameworkDirectory, RedistListFolder);
 
-                    if (Directory.Exists(redistDirectory))
+                    if (FileSystems.Default.DirectoryExists(redistDirectory))
                     {
                         results = Directory.GetFiles(redistDirectory, MatchPattern);
                         s_redistListPathCache.Add(frameworkDirectory, results);
@@ -1018,7 +1018,7 @@ namespace Microsoft.Build.Tasks
                         foreach (string subsetName in _subsetToSearchFor)
                         {
                             string subsetFilePath = Path.Combine(subsetDirectory, subsetName + ".xml");
-                            if (File.Exists(subsetFilePath))
+                            if (FileSystems.Default.FileExists(subsetFilePath))
                             {
                                 subsetFilesForFrameworkDirectory.Add(subsetFilePath);
                             }

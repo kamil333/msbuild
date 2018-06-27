@@ -590,7 +590,7 @@ namespace Microsoft.Build.Execution
         internal void ClearCachedFiles()
         {
             string resultsDirectory = TargetResult.GetCacheDirectory(_configurationId, "None" /*Does not matter because we just need the directory name not the file*/);
-            if (Directory.Exists(resultsDirectory))
+            if (FileSystems.Default.DirectoryExists(resultsDirectory))
             {
                 FileUtilities.DeleteDirectoryNoThrow(resultsDirectory, true /*recursive*/);
             }

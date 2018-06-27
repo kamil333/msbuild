@@ -450,7 +450,7 @@ namespace Microsoft.Build.BackEnd
             // Should always have been set already.
             ErrorUtilities.VerifyThrowInternalLength(msbuildLocation, "msbuildLocation");
 
-            if (!File.Exists(msbuildLocation))
+            if (!FileSystems.Default.FileExists(msbuildLocation))
             {
                 throw new BuildAbortedException(ResourceUtilities.FormatResourceString("CouldNotFindMSBuildExe", msbuildLocation));
             }

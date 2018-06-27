@@ -274,7 +274,7 @@ namespace Microsoft.Build.Execution
             if (direction == TranslationDirection.WriteToStream)
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(cacheFile));
-                if (File.Exists(cacheFile))
+                if (FileSystems.Default.FileExists(cacheFile))
                 {
                     // If the file already exists, then we have cached this once before.  No need to cache it again since it cannot have changed.
                     return null;

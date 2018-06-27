@@ -286,7 +286,7 @@ namespace Microsoft.Build.Tasks
                     break;
                 }
 
-                if (File.Exists(projectPath) || (_skipNonexistentProjects == SkipNonexistentProjectsBehavior.Build))
+                if (FileSystems.Default.FileExists(projectPath) || (_skipNonexistentProjects == SkipNonexistentProjectsBehavior.Build))
                 {
                     if (FileUtilities.IsVCProjFilename(projectPath))
                     {

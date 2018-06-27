@@ -144,7 +144,7 @@ namespace Microsoft.Build.BackEnd
                 return;
             }
 
-            if (!File.Exists(planName))
+            if (!FileSystems.Default.FileExists(planName))
             {
                 return;
             }

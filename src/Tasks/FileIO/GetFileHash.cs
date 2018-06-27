@@ -68,7 +68,7 @@ namespace Microsoft.Build.Tasks
 
             foreach (var file in Files)
             {
-                if (!File.Exists(file.ItemSpec))
+                if (!FileSystems.Default.FileExists(file.ItemSpec))
                 {
                     Log.LogErrorFromResources("FileHash.FileNotFound", file.ItemSpec);
                 }

@@ -309,7 +309,7 @@ namespace Microsoft.Build.Utilities
 
             try
             {
-                if (File.Exists(sdkManifestPath))
+                if (FileSystems.Default.FileExists(sdkManifestPath))
                 {
                     XmlDocument doc = new XmlDocument();
                     XmlReaderSettings readerSettings = new XmlReaderSettings { DtdProcessing = DtdProcessing.Ignore };

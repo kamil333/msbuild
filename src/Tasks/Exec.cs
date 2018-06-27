@@ -520,7 +520,7 @@ namespace Microsoft.Build.Tasks
                 // Work around https://github.com/Microsoft/msbuild/issues/2273 and
                 // https://github.com/dotnet/corefx/issues/19110, which result in
                 // a bad path being returned above on Nano Server SKUs of Windows.
-                if (!File.Exists(systemCmd))
+                if (!FileSystems.Default.FileExists(systemCmd))
                 {
                     return Environment.GetEnvironmentVariable("ComSpec");
                 }
@@ -545,7 +545,7 @@ namespace Microsoft.Build.Tasks
             // If the working directory is UNC, we're going to use "pushd" in the batch file to set it.
             // If it's invalid, pushd won't fail: it will just go ahead and use the system folder.
             // So verify it's valid here.
-            if (!Directory.Exists(_workingDirectory))
+            if (!FileSystems.Default.DirectoryExists(_workingDirectory))
             {
                 throw new DirectoryNotFoundException(ResourceUtilities.FormatResourceString("Exec.InvalidWorkingDirectory", _workingDirectory));
             }

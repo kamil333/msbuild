@@ -1085,7 +1085,7 @@ namespace Microsoft.Build.Tasks
                     currentAssembly = Assembly.GetExecutingAssembly().CodeBase;
                     var codeBase = new Uri(currentAssembly);
                     DateTime currentCodeLastWriteTime = File.GetLastWriteTimeUtc(codeBase.LocalPath);
-                    if (File.Exists(referencesCacheFile) && currentCodeLastWriteTime < referencesCacheFileLastWriteTimeUtc)
+                    if (FileSystems.Default.FileExists(referencesCacheFile) && currentCodeLastWriteTime < referencesCacheFileLastWriteTimeUtc)
                     {
                         return true;
                     }
