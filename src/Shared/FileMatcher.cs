@@ -1750,20 +1750,20 @@ namespace Microsoft.Build.Shared
                     excludeSpecsUnescaped);
             }
 
-            var filesKey = ComputeFileEnumerationCacheKey(projectDirectoryUnescaped, filespecUnescaped, excludeSpecsUnescaped);
+            var enumerationKey = ComputeFileEnumerationCacheKey(projectDirectoryUnescaped, filespecUnescaped, excludeSpecsUnescaped);
 
             ImmutableArray<string> files;
-            if (!_cachedGlobExpansions.TryGetValue(filesKey, out files))
+            if (!_cachedGlobExpansions.TryGetValue(enumerationKey, out files))
             {
                 // avoid parallel evaluations of the same wildcard by using a unique lock for each wildcard
-                object locks = _cachedGlobExpansionsLock.Value.GetOrAdd(filesKey, _ => new object());
+                object locks = _cachedGlobExpansionsLock.Value.GetOrAdd(enumerationKey, _ => new object());
                 lock (locks)
                 {
-                    if (!_cachedGlobExpansions.TryGetValue(filesKey, out files))
+                    if (!_cachedGlobExpansions.TryGetValue(enumerationKey, out files))
                     {
                         files =
                             _cachedGlobExpansions.GetOrAdd(
-                                filesKey,
+                                enumerationKey,
                                 (_) =>
                                     GetFilesImplementation(
                                         projectDirectoryUnescaped,
@@ -1782,7 +1782,21 @@ namespace Microsoft.Build.Shared
 
         private static string ComputeFileEnumerationCacheKey(string projectDirectoryUnescaped, string filespecUnescaped, IEnumerable<string> excludes)
         {
-            var sb = new StringBuilder();
+            var excludeSize = 0;
+
+            if (excludes != null)
+            {
+                foreach (var exclude in excludes)
+                {
+                    excludeSize += exclude.Length;
+                }
+            }
+
+            var sb = new StringBuilder(
+                projectDirectoryUnescaped.Length +
+                filespecUnescaped.Length +
+                excludeSize
+                );
 
             sb.Append(projectDirectoryUnescaped);
             sb.Append(filespecUnescaped);
