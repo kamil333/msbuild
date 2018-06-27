@@ -6,6 +6,7 @@ using System;
 using System.IO;
 using System.Collections.Generic;
 using Microsoft.Build.Shared;
+using Microsoft.Build.Shared.FileSystem;
 using Microsoft.Win32;
 
 namespace Microsoft.Build.Tasks

@@ -14,6 +14,7 @@ using System.Reflection;
 using System.Security;
 using System.Threading;
 using System.Xml;
+using Microsoft.Build.Shared.FileSystem;
 #if FEATURE_VARIOUS_EXCEPTIONS
 using System.Xml.Schema;
 using System.Runtime.Serialization;

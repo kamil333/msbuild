@@ -15,6 +15,7 @@ using System.Runtime.InteropServices;
 using System.Collections.Generic;
 using Microsoft.Build.Collections;
 using Microsoft.Build.Internal;
+using Microsoft.Build.Shared.FileSystem;
 
 namespace Microsoft.Build.Shared
 {

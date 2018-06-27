@@ -11,6 +11,7 @@ using System.Xml.Serialization;
 using Microsoft.Build.Utilities;
 using FrameworkNameVersioning = System.Runtime.Versioning.FrameworkName;
 using System.Collections.Generic;
+using Microsoft.Build.Shared.FileSystem;
 
 namespace Microsoft.Build.Tasks.Deployment.ManifestUtilities
 {

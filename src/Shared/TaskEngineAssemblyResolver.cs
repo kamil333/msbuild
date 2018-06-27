@@ -11,6 +11,7 @@ using System.Globalization;
 using System.Runtime.Loader;
 #endif
 using Microsoft.Build.Shared;
+using Microsoft.Build.Shared.FileSystem;
 
 namespace Microsoft.Build.BackEnd.Logging
 {

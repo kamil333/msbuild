@@ -10,6 +10,7 @@ using System.Resources;
 using System.Xml;
 
 using Microsoft.Build.Shared;
+using Microsoft.Build.Shared.FileSystem;
 using Microsoft.Build.Utilities;
 
 namespace Microsoft.Build.Tasks

@@ -6,6 +6,7 @@ using System.IO;
 using System.Xml;
 using System.Collections.Generic;
 using Microsoft.Build.Shared;
+using Microsoft.Build.Shared.FileSystem;
 
 namespace Microsoft.Build.Utilities
 {

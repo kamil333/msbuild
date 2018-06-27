@@ -19,6 +19,7 @@ using PropertyElement = Microsoft.Build.Evaluation.ToolsetElement.PropertyElemen
 #endif
 using System.Reflection;
 using System.Runtime.InteropServices;
+using Microsoft.Build.Shared.FileSystem;
 
 namespace Microsoft.Build.Shared
 {
