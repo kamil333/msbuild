@@ -1725,12 +1725,13 @@ namespace Microsoft.Build.Shared
         /// <param name="excludeSpecsUnescaped">Exclude files that match this file spec.</param>
         /// <returns>The array of files.</returns>
         internal string[] GetFiles
-        (
+            (
             string projectDirectoryUnescaped,
             string filespecUnescaped,
-            IEnumerable<string> excludeSpecsUnescaped = null
-        )
+            List<string> excludeSpecsUnescaped = null
+            )
         {
+
             // For performance. Short-circuit iff there is no wildcard.
             // Perf Note: Doing a [Last]IndexOfAny(...) is much faster than compiling a
             // regular expression that does the same thing, regardless of whether
@@ -1780,7 +1781,7 @@ namespace Microsoft.Build.Shared
             return filesToReturn;
         }
 
-        private static string ComputeFileEnumerationCacheKey(string projectDirectoryUnescaped, string filespecUnescaped, IEnumerable<string> excludes)
+        private static string ComputeFileEnumerationCacheKey(string projectDirectoryUnescaped, string filespecUnescaped, List<string> excludes)
         {
             var excludeSize = 0;
 
@@ -2010,7 +2011,7 @@ namespace Microsoft.Build.Shared
             return ((value >= 'A' && value <= 'Z') || (value >= 'a' && value <= 'z'));
         }
 
-        static string[] CreateArrayWithSingleItemIfNotExcluded(string filespecUnescaped, IEnumerable<string> excludeSpecsUnescaped)
+        static string[] CreateArrayWithSingleItemIfNotExcluded(string filespecUnescaped, List<string> excludeSpecsUnescaped)
         {
             if (excludeSpecsUnescaped != null)
             {
@@ -2047,7 +2048,7 @@ namespace Microsoft.Build.Shared
         private string[] GetFilesImplementation(
             string projectDirectoryUnescaped,
             string filespecUnescaped,
-            IEnumerable<string> excludeSpecsUnescaped)
+            List<string> excludeSpecsUnescaped)
         {
             // UNDONE (perf): Short circuit the complex processing when we only have a path and a wildcarded filename
 
