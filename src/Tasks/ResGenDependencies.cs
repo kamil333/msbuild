@@ -201,7 +201,7 @@ namespace Microsoft.Build.Tasks
                 //
                 // filename is the filename of the .resx file that is to be examined.
 
-                if (File.Exists(FileName))
+                if (FileSystems.Default.FileExists(FileName))
                 {
                     linkedFiles = GetLinkedFiles(filename, baseLinkedFileDirectory);
                 }

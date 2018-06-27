@@ -58,7 +58,7 @@ namespace Microsoft.Build.Tasks
         {
             this.filename = FileUtilities.FixFilePath(filename);
 
-            if (File.Exists(FileName))
+            if (FileSystems.Default.FileExists(FileName))
             {
                 lastModified = File.GetLastWriteTime(FileName);
                 exists = true;

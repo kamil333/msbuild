@@ -637,7 +637,7 @@ namespace Microsoft.Build.Tasks
                 {
                     try
                     {
-                        bool fileExists = File.Exists(referenceAssembly);
+                        bool fileExists = FileSystems.Default.FileExists(referenceAssembly);
                         if (!fileExists)
                         {
                             if (!referenceAssembly.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) || !referenceAssembly.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
@@ -657,10 +657,10 @@ namespace Microsoft.Build.Tasks
                                         NativeMethodsShared.FrameworkCurrentPath,
                                         "Facades",
                                         Path.GetFileName(referenceAssembly));
-                                    if (!File.Exists(path))
+                                    if (!FileSystems.Default.FileExists(path))
                                     {
                                         var newPath = path + ".dll";
-                                        path = !File.Exists(newPath) ? path + ".exe" : newPath;
+                                        path = !FileSystems.Default.FileExists(newPath) ? path + ".exe" : newPath;
                                     }
                                     candidateAssembly = Assembly.UnsafeLoadFrom(path);
                                     if (candidateAssembly != null)

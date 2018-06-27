@@ -215,7 +215,7 @@ namespace Microsoft.Build.Tasks.Deployment.ManifestUtilities
         {
             if (!logging) return null;
             string logPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), @"Microsoft\VisualStudio\8.0\VSPLOG");
-            if (!Directory.Exists(logPath))
+            if (!FileSystems.Default.DirectoryExists(logPath))
                 Directory.CreateDirectory(logPath);
             return logPath;
         }

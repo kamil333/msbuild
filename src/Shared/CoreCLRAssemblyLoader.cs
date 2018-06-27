@@ -117,7 +117,7 @@ namespace Microsoft.Build.Shared
                                 cultureSubfolder,
                                 $"{assemblyName.Name}.{extension}");
                             if (IsAssemblyAlreadyLoaded(candidatePath) ||
-                                !File.Exists(candidatePath))
+                                !FileSystems.Default.FileExists(candidatePath))
                             {
                                 continue;
                             }

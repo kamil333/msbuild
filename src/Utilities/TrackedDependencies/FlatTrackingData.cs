@@ -651,7 +651,7 @@ namespace Microsoft.Build.Utilities
             else if (_tlogMarker != string.Empty)
             {
                 string markerDirectory = Path.GetDirectoryName(_tlogMarker);
-                if (!Directory.Exists(markerDirectory))
+                if (!FileSystems.Default.DirectoryExists(markerDirectory))
                 {
                     Directory.CreateDirectory(markerDirectory);
                 }

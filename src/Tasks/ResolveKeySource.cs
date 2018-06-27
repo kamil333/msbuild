@@ -201,7 +201,7 @@ namespace Microsoft.Build.Tasks
             {
 #if FEATURE_PFX_SIGNING
                 // if the cert isn't on disk, we can't import it
-                if (!File.Exists(CertificateFile))
+                if (!FileSystems.Default.FileExists(CertificateFile))
                 {
                     Log.LogErrorWithCodeFromResources("ResolveKeySource.CertificateNotInStore");
                 }

@@ -303,7 +303,7 @@ namespace Microsoft.Build.Tasks
                 pathToTool = ToolLocationHelper.GetPathToDotNetFrameworkFile(ToolExe, TargetDotNetFrameworkVersion.Latest);
             }
 
-            if (String.IsNullOrEmpty(pathToTool) || !File.Exists(pathToTool))
+            if (String.IsNullOrEmpty(pathToTool) || !FileSystems.Default.FileExists(pathToTool))
             {
                 pathToTool = SdkToolsPathUtility.GeneratePathToTool(SdkToolsPathUtility.FileInfoExists, ProcessorArchitecture.CurrentProcessArchitecture, SdkToolsPath, ToolExe, Log, true);
             }

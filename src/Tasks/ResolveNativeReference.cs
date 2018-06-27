@@ -109,7 +109,7 @@ namespace Microsoft.Build.Tasks
                 ITaskItem item = NativeReferences[reference];
                 string path = item.GetMetadata("HintPath");
                 // If no HintPath then fallback to trying to resolve from the assembly identity...
-                if (String.IsNullOrEmpty(path) || !File.Exists(path))
+                if (String.IsNullOrEmpty(path) || !FileSystems.Default.FileExists(path))
                 {
                     AssemblyIdentity ai = AssemblyIdentity.FromAssemblyName(item.ItemSpec);
                     if (ai != null)

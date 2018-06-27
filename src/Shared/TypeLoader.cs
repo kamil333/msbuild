@@ -168,7 +168,7 @@ namespace Microsoft.Build.Shared
                     var assemblyNameInExecutableDirectory = Path.Combine(BuildEnvironmentHelper.Instance.CurrentMSBuildToolsDirectory,
                         Path.GetFileName(assemblyLoadInfo.AssemblyFile));
 
-                    if (File.Exists(assemblyNameInExecutableDirectory))
+                    if (FileSystems.Default.FileExists(assemblyNameInExecutableDirectory))
                     {
                         var simpleName = Path.GetFileNameWithoutExtension(assemblyLoadInfo.AssemblyFile);
                         loadedAssembly = Assembly.Load(new AssemblyName(simpleName));

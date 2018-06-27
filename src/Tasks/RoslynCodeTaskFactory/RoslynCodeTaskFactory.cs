@@ -526,7 +526,7 @@ namespace Microsoft.Build.Tasks
             foreach (string reference in references)
             {
                 // The user specified a full path to an assembly, so there is no need to resolve
-                if (File.Exists(reference))
+                if (FileSystems.Default.FileExists(reference))
                 {
                     // The path could be relative like ..\Assembly.dll so we need to get the full path
                     resolvedAssemblyReferences.Add(Path.GetFullPath(reference));
@@ -712,12 +712,12 @@ namespace Microsoft.Build.Tasks
             }
             finally
             {
-                if (File.Exists(assemblyPath))
+                if (FileSystems.Default.FileExists(assemblyPath))
                 {
                     File.Delete(assemblyPath);
                 }
 
-                if (deleteSourceCodeFile && File.Exists(sourceCodePath))
+                if (deleteSourceCodeFile && FileSystems.Default.FileExists(sourceCodePath))
                 {
                     File.Delete(sourceCodePath);
                 }

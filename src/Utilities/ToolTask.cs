@@ -452,7 +452,7 @@ namespace Microsoft.Build.Utilities
                 pathToTool = Path.Combine(ToolPath, ToolExe);
             }
 
-            if (string.IsNullOrWhiteSpace(pathToTool) || ToolPath == null && !File.Exists(pathToTool))
+            if (string.IsNullOrWhiteSpace(pathToTool) || ToolPath == null && !FileSystems.Default.FileExists(pathToTool))
             {
                 // Otherwise, try to find the tool ourselves.
                 pathToTool = GenerateFullPathToTool();
@@ -473,7 +473,7 @@ namespace Microsoft.Build.Utilities
                 bool isOnlyFileName = Path.GetFileName(pathToTool).Length == pathToTool.Length;
                 if (!isOnlyFileName)
                 {
-                    bool isExistingFile = File.Exists(pathToTool);
+                    bool isExistingFile = FileSystems.Default.FileExists(pathToTool);
                     if (!isExistingFile)
                     {
                         LogPrivate.LogErrorWithCodeFromResources("ToolTask.ToolExecutableNotFound", pathToTool);
@@ -1257,7 +1257,7 @@ namespace Microsoft.Build.Utilities
                     try
                     {
                         // The PATH can contain anything, including bad characters
-                        return Directory.Exists(path);
+                        return FileSystems.Default.DirectoryExists(path);
                     }
                     catch (Exception)
                     {
@@ -1265,7 +1265,7 @@ namespace Microsoft.Build.Utilities
                     }
                 })
                 .Select(folderPath => Path.Combine(folderPath, filename))
-                .FirstOrDefault(fullPath => !string.IsNullOrEmpty(fullPath) && File.Exists(fullPath));
+                .FirstOrDefault(fullPath => !string.IsNullOrEmpty(fullPath) && FileSystems.Default.FileExists(fullPath));
         }
 
         #endregion
@@ -1525,7 +1525,7 @@ namespace Microsoft.Build.Utilities
             finally
             {
                 // Clean up after ourselves.
-                if (_temporaryBatchFile != null && File.Exists(_temporaryBatchFile))
+                if (_temporaryBatchFile != null && FileSystems.Default.FileExists(_temporaryBatchFile))
                 {
                     DeleteTempFile(_temporaryBatchFile);
                 }

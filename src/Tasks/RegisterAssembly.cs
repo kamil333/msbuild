@@ -204,7 +204,7 @@ namespace Microsoft.Build.Tasks
 
             Log.LogMessageFromResources(MessageImportance.Low, "RegisterAssembly.RegisteringAssembly", assemblyPath);
 
-            if (!File.Exists(assemblyPath))
+            if (!FileSystems.Default.FileExists(assemblyPath))
             {
                 Log.LogErrorWithCodeFromResources("RegisterAssembly.RegisterAsmFileDoesNotExist", assemblyPath);
                 return false;
@@ -232,7 +232,7 @@ namespace Microsoft.Build.Tasks
                 Log.LogMessageFromResources(MessageImportance.Low, "RegisterAssembly.RegisteringTypeLib", typeLibPath);
 
                 // only regenerate the type lib if necessary
-                if ((!File.Exists(typeLibPath)) ||
+                if ((!FileSystems.Default.FileExists(typeLibPath)) ||
                     (File.GetLastWriteTime(typeLibPath) < File.GetLastWriteTime(assemblyPath)))
                 {
                     // Regenerate the type library

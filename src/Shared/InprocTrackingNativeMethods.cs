@@ -207,7 +207,7 @@ namespace Microsoft.Build.Shared
                 string buildToolsPath = FrameworkLocationHelper.GeneratePathToBuildToolsForToolsVersion(MSBuildConstants.CurrentToolsVersion, DotNetFrameworkArchitecture.Current);
                 string fileTrackerPath = Path.Combine(buildToolsPath, fileTrackerDllName.Value);
 
-                if (!File.Exists(fileTrackerPath))
+                if (!FileSystems.Default.FileExists(fileTrackerPath))
                 {
                     throw new DllNotFoundException(fileTrackerDllName.Value);
                 }

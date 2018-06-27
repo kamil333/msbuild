@@ -35,7 +35,7 @@ namespace Microsoft.Build.Tasks
             bool success = true;
             if (File != null)
             {
-                if (System.IO.File.Exists(File.ItemSpec))
+                if (FileSystems.Default.FileExists(File.ItemSpec))
                 {
                     try
                     {

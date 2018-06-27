@@ -597,7 +597,7 @@ namespace Microsoft.Build.Tasks.Deployment.ManifestUtilities
             Stream s = null;
             try
             {
-                if (File.Exists(path))
+                if (FileSystems.Default.FileExists(path))
                 {
                     s = File.Open(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
                 }

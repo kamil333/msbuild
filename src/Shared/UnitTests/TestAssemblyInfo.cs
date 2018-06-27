@@ -84,7 +84,7 @@ public class MSBuildTestAssemblyFixture : IDisposable
         while (currentFolder != null)
         {
             string potentialVersionsPropsPath = Path.Combine(currentFolder, "build", "Versions.props");
-            if (File.Exists(potentialVersionsPropsPath))
+            if (FileSystems.Default.FileExists(potentialVersionsPropsPath))
             {
                 var doc = XDocument.Load(potentialVersionsPropsPath);
                 var ns = doc.Root.Name.Namespace;

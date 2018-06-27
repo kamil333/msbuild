@@ -91,7 +91,7 @@ namespace Microsoft.Build.Shared
 
                 string file = Path.Combine(directory, $"tmp{Guid.NewGuid():N}{extension}");
 
-                ErrorUtilities.VerifyThrow(!File.Exists(file), "Guid should be unique");
+                ErrorUtilities.VerifyThrow(!FileSystems.Default.FileExists(file), "Guid should be unique");
 
                 if (createFile)
                 {
@@ -133,7 +133,7 @@ namespace Microsoft.Build.Shared
                     ? GetTemporaryDirectory()
                     : System.IO.Path.Combine(System.IO.Path.GetTempPath(), name);
 
-                if (Directory.Exists(Path))
+                if (FileSystems.Default.DirectoryExists(Path))
                 {
                     Directory.Delete(Path, true);
                 }

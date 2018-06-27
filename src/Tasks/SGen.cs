@@ -186,7 +186,7 @@ namespace Microsoft.Build.Tasks
                 pathToTool = ToolLocationHelper.GetPathToDotNetFrameworkFile(ToolExe, TargetDotNetFrameworkVersion.Latest);
             }
 
-            if (String.IsNullOrEmpty(pathToTool) || !File.Exists(pathToTool))
+            if (String.IsNullOrEmpty(pathToTool) || !FileSystems.Default.FileExists(pathToTool))
             {
                 pathToTool = SdkToolsPathUtility.GeneratePathToTool(SdkToolsPathUtility.FileInfoExists, ProcessorArchitecture.CurrentProcessArchitecture, SdkToolsPath, ToolExe, Log, true);
             }
@@ -204,7 +204,7 @@ namespace Microsoft.Build.Tasks
             {
                 foreach (string reference in References)
                 {
-                    if (!File.Exists(reference))
+                    if (!FileSystems.Default.FileExists(reference))
                     {
                         Log.LogErrorWithCodeFromResources("SGen.ResourceNotFound", reference);
                         return false;
@@ -293,7 +293,7 @@ namespace Microsoft.Build.Tasks
                     commandLineBuilder.AppendNestedSwitch("/compiler:", "/platform:", Platform);
                 }
 
-                serializationAssemblyPathExists = File.Exists(SerializationAssemblyPath);
+                serializationAssemblyPathExists = FileSystems.Default.FileExists(SerializationAssemblyPath);
             }
             catch (Exception e) when (ExceptionHandling.IsIoRelatedException(e))
             {

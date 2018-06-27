@@ -103,7 +103,7 @@ namespace Microsoft.Build.Tasks
 
             var writeOutput = true;
 
-            if(File.Exists(OutputAppConfigFile.ItemSpec))
+            if(FileSystems.Default.FileExists(OutputAppConfigFile.ItemSpec))
             {
                 try
                 {

@@ -37,7 +37,7 @@ namespace Microsoft.Build.Tasks
 
         public override bool Execute()
         {
-            if (!System.IO.File.Exists(File))
+            if (!FileSystems.Default.FileExists(File))
             {
                 Log.LogErrorFromResources("FileHash.FileNotFound", File);
                 return false;

@@ -94,7 +94,7 @@ namespace Microsoft.Build.Tasks
 
                 try
                 {
-                    if (File.Exists(newLocation))
+                    if (FileSystems.Default.FileExists(newLocation))
                     {
                         assembly = Assembly.ReflectionOnlyLoadFrom(newLocation);
                     }
@@ -817,7 +817,7 @@ namespace Microsoft.Build.Tasks
         {
             using (var sr = new BinaryReader(File.OpenRead(path)))
             {
-                if (!File.Exists(path))
+                if (!FileSystems.Default.FileExists(path))
                 {
                     return string.Empty;
                 }

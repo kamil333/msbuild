@@ -152,7 +152,7 @@ namespace Microsoft.Build.Logging
 
                     // It is possible that the archive couldn't be created for some reason.
                     // Only embed it if it actually exists.
-                    if (File.Exists(archiveFilePath))
+                    if (FileSystems.Default.FileExists(archiveFilePath))
                     {
                         eventArgsWriter.WriteBlob(BinaryLogRecordKind.ProjectImportArchive, File.ReadAllBytes(archiveFilePath));
                         File.Delete(archiveFilePath);
