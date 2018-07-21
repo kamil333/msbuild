@@ -966,7 +966,7 @@ namespace Microsoft.Build.BackEnd
                     if (requiredNodeId == InvalidNodeId || idleNodes.Contains(requiredNodeId))
                     {
                         // Look for a request with the smallest source file
-                        System.IO.FileInfo f = new FileInfo(_configCache[unscheduledRequest.BuildRequest.ConfigurationId].ProjectFullPath);
+                        var f = new FileInfo(_configCache[unscheduledRequest.BuildRequest.ConfigurationId].ProjectFullPath);
                         if (f.Length < sizeOfSmallestSourceFile)
                         {
                             sizeOfSmallestSourceFile = f.Length;
@@ -1008,7 +1008,7 @@ namespace Microsoft.Build.BackEnd
                     if (requiredNodeId == InvalidNodeId || idleNodes.Contains(requiredNodeId))
                     {
                         // Look for a request with the largest source file
-                        System.IO.FileInfo f = new FileInfo(_configCache[unscheduledRequest.BuildRequest.ConfigurationId].ProjectFullPath);
+                        var f = new FileInfo(_configCache[unscheduledRequest.BuildRequest.ConfigurationId].ProjectFullPath);
                         if (f.Length > sizeOfLargestSourceFile)
                         {
                             sizeOfLargestSourceFile = f.Length;
