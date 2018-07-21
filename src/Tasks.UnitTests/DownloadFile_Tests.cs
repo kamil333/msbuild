@@ -1,8 +1,18 @@
-﻿using Microsoft.Build.UnitTests;
+using Microsoft.Build.UnitTests;
 using Microsoft.Build.Utilities;
 using Shouldly;
 using System;
 using System.IO;
+#if NETFRAMEWORK
+	using Directory = Microsoft.Internal.IO.Directory;
+	using DirectoryInfo = Microsoft.Internal.IO.DirectoryInfo;
+	using File = Microsoft.Internal.IO.File;
+	using FileInfo = Microsoft.Internal.IO.FileInfo;
+	using Path = Microsoft.Internal.IO.Path;
+	using EnumerationOptions = Microsoft.Internal.IO.EnumerationOptions;
+	using SearchOption = Microsoft.Internal.IO.SearchOption;
+	using FileSystemInfo = Microsoft.Internal.IO.FileSystemInfo;
+#endif
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
