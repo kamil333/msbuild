@@ -1,9 +1,19 @@
-﻿// Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
+// Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
 
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+#if NETFRAMEWORK
+	using Directory = Microsoft.Internal.IO.Directory;
+	using DirectoryInfo = Microsoft.Internal.IO.DirectoryInfo;
+	using File = Microsoft.Internal.IO.File;
+	using FileInfo = Microsoft.Internal.IO.FileInfo;
+	using Path = Microsoft.Internal.IO.Path;
+	using EnumerationOptions = Microsoft.Internal.IO.EnumerationOptions;
+	using SearchOption = Microsoft.Internal.IO.SearchOption;
+	using FileSystemInfo = Microsoft.Internal.IO.FileSystemInfo;
+#endif
 using System.Reflection;
 using System.Runtime.Loader;
 using Microsoft.Build.Shared.FileSystem;
