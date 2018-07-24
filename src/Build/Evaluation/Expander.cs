@@ -3069,6 +3069,12 @@ namespace Microsoft.Build.Evaluation
                         ProjectErrorUtilities.ThrowInvalidProject(elementLocation, "InvalidFunctionTypeUnavailable", expressionFunction, typeName);
                     }
 
+                    // Check that the function that we're going to call is valid to call
+                    if (!IsStaticMethodAvailable(receiverType, functionBuilder.Name))
+                    {
+                        ProjectErrorUtilities.ThrowInvalidProject(elementLocation, "InvalidFunctionMethodUnavailable", functionBuilder.Name, receiverType.FullName);
+                    }
+
                     functionBuilder.ReceiverType = receiverType;
                 }
                 else if (expressionFunction[0] == '[') // We have an indexer
@@ -3150,6 +3156,16 @@ namespace Microsoft.Build.Evaluation
                 }                
             }
 #endif
+            private static readonly Dictionary<Type, Type> _routedStaticTypes = new Dictionary<Type, Type>
+            {
+                {typeof(System.IO.Directory), typeof(Microsoft.Internal.IO.Directory)},
+                {typeof(System.IO.DirectoryInfo), typeof(Microsoft.Internal.IO.DirectoryInfo)},
+                {typeof(System.IO.File), typeof(Microsoft.Internal.IO.File)},
+                {typeof(System.IO.FileInfo), typeof(Microsoft.Internal.IO.FileInfo)},
+                {typeof(System.IO.Path), typeof(Microsoft.Internal.IO.Path)},
+                {typeof(System.IO.SearchOption), typeof(Microsoft.Internal.IO.SearchOption)},
+                {typeof(System.IO.FileSystemInfo), typeof(Microsoft.Internal.IO.FileSystemInfo)}
+            };
 
             /// <summary>
             /// Execute the function on the given instance
@@ -3164,12 +3180,6 @@ namespace Microsoft.Build.Evaluation
                     // If there is no object instance, then the method invocation will be a static
                     if (objectInstance == null)
                     {
-                        // Check that the function that we're going to call is valid to call
-                        if (!IsStaticMethodAvailable(_receiverType, _methodMethodName))
-                        {
-                            ProjectErrorUtilities.ThrowInvalidProject(elementLocation, "InvalidFunctionMethodUnavailable", _methodMethodName, _receiverType.FullName);
-                        }
-
                         _bindingFlags |= BindingFlags.Static;
 
                         // For our intrinsic function we need to support calling of internal methods
@@ -3257,11 +3267,15 @@ namespace Microsoft.Build.Evaluation
                         }
                     }
 
+                    var routedReceiverType = _routedStaticTypes.TryGetValue(_receiverType, out var newType)
+                        ? newType
+                        : _receiverType;
+
                     // If we've been asked to construct an instance, then we
                     // need to locate an appropriate constructor and invoke it
                     if (String.Equals("new", _methodMethodName, StringComparison.OrdinalIgnoreCase))
                     {
-                        functionResult = LateBindExecute(null /* no previous exception */, BindingFlags.Public | BindingFlags.Instance, null /* no instance for a constructor */, args, true /* is constructor */);
+                        functionResult = LateBindExecute(null /* no previous exception */, BindingFlags.Public | BindingFlags.Instance, routedReceiverType, null /* no instance for a constructor */, args, true /* is constructor */);
                     }
                     else
                     {
@@ -3269,9 +3283,9 @@ namespace Microsoft.Build.Evaluation
 
                         try
                         {
-                            // First attempt to recognize some well-known functions to avoid binding
-                            // and potential first-chance MissingMethodExceptions
-                            wellKnownFunctionSuccess = TryExecuteWellKnownFunction(out functionResult, objectInstance, args);
+                            // First attempt to recognize some well-known functions to avoid binding and potential first-chance MissingMethodExceptions
+                            // Well known functions operate on the non-routed, original receiver type. They achieve routing by compile time binding
+                            wellKnownFunctionSuccess = TryExecuteWellKnownFunction(out functionResult, _receiverType, objectInstance, args);
                         }
                         // we need to preserve the same behavior on exceptions as the actual binder
                         catch (Exception ex)
@@ -3294,11 +3308,11 @@ namespace Microsoft.Build.Evaluation
                             {
 #if FEATURE_TYPE_INVOKEMEMBER
                                 // First use InvokeMember using the standard binder - this will match and coerce as needed
-                                functionResult = _receiverType.InvokeMember(_methodMethodName, _bindingFlags, Type.DefaultBinder, objectInstance, args, CultureInfo.InvariantCulture);
+                                functionResult = routedReceiverType.InvokeMember(_methodMethodName, _bindingFlags, Type.DefaultBinder, objectInstance, args, CultureInfo.InvariantCulture);
 #else
                                 if (_invokeType == InvokeType.InvokeMethod)
                                 {
-                                    functionResult = _receiverType.InvokeMember(_methodMethodName, _bindingFlags, objectInstance, args, null, CultureInfo.InvariantCulture, null);
+                                    functionResult = receiverType.InvokeMember(_methodMethodName, _bindingFlags, objectInstance, args, null, CultureInfo.InvariantCulture, null);
                                 }
                                 else if (_invokeType == InvokeType.GetPropertyOrField)
                                 {
@@ -3330,7 +3344,7 @@ namespace Microsoft.Build.Evaluation
                                 {
                                     // The standard binder failed, so do our best to coerce types into the arguments for the function
                                     // This may happen if the types need coercion, but it may also happen if the object represents a type that contains open type parameters, that is, ContainsGenericParameters returns true. 
-                                    functionResult = LateBindExecute(ex, _bindingFlags, objectInstance, args, false /* is not constructor */);
+                                    functionResult = LateBindExecute(ex, _bindingFlags, routedReceiverType, objectInstance, args, false /* is not constructor */);
                                 }
                                 else
                                 {
@@ -3416,10 +3430,15 @@ namespace Microsoft.Build.Evaluation
             /// See https://github.com/Microsoft/msbuild/issues/2217
             /// </summary>
             /// <param name="returnVal">The value returned from the function call</param>
+            /// <param name="receiverType"></param>
             /// <param name="objectInstance">Object that the function is called on</param>
             /// <param name="args">arguments</param>
             /// <returns>True if the well known function call binding was successful</returns>
-            private bool TryExecuteWellKnownFunction(out object returnVal, object objectInstance, object[] args)
+            private bool TryExecuteWellKnownFunction(
+                out object returnVal,
+                Type receiverType,
+                object objectInstance,
+                object[] args)
             {
                 returnVal = null;
 
@@ -3575,7 +3594,7 @@ namespace Microsoft.Build.Evaluation
                 }
                 else if (objectInstance == null)
                 {
-                    if (_receiverType == typeof(string))
+                    if (receiverType == typeof(string))
                     {
                         if (string.Equals(_methodMethodName, nameof(string.IsNullOrWhiteSpace), StringComparison.OrdinalIgnoreCase))
                         {
@@ -3594,7 +3613,7 @@ namespace Microsoft.Build.Evaluation
                             }
                         }
                     }
-                    else if (_receiverType == typeof(Math))
+                    else if (receiverType == typeof(Math))
                     {
                         if (string.Equals(_methodMethodName, nameof(Math.Max), StringComparison.OrdinalIgnoreCase))
                         {
@@ -3613,7 +3632,7 @@ namespace Microsoft.Build.Evaluation
                             }
                         }
                     }
-                    else if (_receiverType == typeof(IntrinsicFunctions))
+                    else if (receiverType == typeof(IntrinsicFunctions))
                     {
                         if (string.Equals(_methodMethodName, nameof(IntrinsicFunctions.EnsureTrailingSlash), StringComparison.OrdinalIgnoreCase))
                         {
@@ -3713,7 +3732,7 @@ namespace Microsoft.Build.Evaluation
                             }
                         }
                     }
-                    else if (_receiverType == typeof(Path))
+                    else if (receiverType == typeof(System.IO.Path))
                     {
                         if (string.Equals(_methodMethodName, nameof(Path.Combine), StringComparison.OrdinalIgnoreCase))
                         {
@@ -4566,7 +4585,13 @@ namespace Microsoft.Build.Evaluation
             /// Construct and instance of objectType based on the constructor or method arguments provided.
             /// Arguments must never be null.
             /// </summary>
-            private object LateBindExecute(Exception ex, BindingFlags bindingFlags, object objectInstance /* null unless instance method */, object[] args, bool isConstructor)
+            private object LateBindExecute(
+                Exception ex,
+                BindingFlags bindingFlags,
+                Type receiverType,
+                object objectInstance /* null unless instance method */,
+                object[] args,
+                bool isConstructor)
             {
                 ParameterInfo[] parameters = null;
                 MethodBase[] members = null;
@@ -4582,16 +4607,16 @@ namespace Microsoft.Build.Evaluation
                 if (isConstructor)
                 {
 #if FEATURE_TYPE_INVOKEMEMBER
-                    memberInfo = _receiverType.GetConstructor(bindingFlags, null, types, null);
+                    memberInfo = receiverType.GetConstructor(bindingFlags, null, types, null);
 #else
-                    memberInfo = _receiverType.GetConstructors(bindingFlags)
+                    memberInfo = receiverType.GetConstructors(bindingFlags)
                         .Where(c => ParametersBindToNStringArguments(c.GetParameters(), args.Length))
                         .FirstOrDefault();
 #endif
                 }
                 else
                 {
-                    memberInfo = _receiverType.GetMethod(_methodMethodName, bindingFlags, null, types, null);
+                    memberInfo = receiverType.GetMethod(_methodMethodName, bindingFlags, null, types, null);
                 }
 
                 // If we didn't get a match on all string arguments,
@@ -4601,11 +4626,11 @@ namespace Microsoft.Build.Evaluation
                     // Gather all methods that may match
                     if (isConstructor)
                     {
-                        members = _receiverType.GetConstructors(bindingFlags);
+                        members = receiverType.GetConstructors(bindingFlags);
                     }
                     else
                     {
-                        members = _receiverType.GetMethods(bindingFlags);
+                        members = receiverType.GetMethods(bindingFlags);
                     }
 
                     // Try to find a method with the right name, number of arguments and

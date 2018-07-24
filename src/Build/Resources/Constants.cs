@@ -324,8 +324,8 @@ namespace Microsoft.Build.Internal
 
                         // Pre declare our common type Tuples
                         var environmentType = new Tuple<string, Type>(null, typeof(Environment));
-                        var directoryType = new Tuple<string, Type>(null, typeof(Directory));
-                        var fileType = new Tuple<string, Type>(null, typeof(File));
+                        var directoryType = new Tuple<string, Type>(null, typeof(System.IO.Directory));
+                        var fileType = new Tuple<string, Type>(null, typeof(System.IO.File));
                         var runtimeInformationType = new Tuple<string, Type>(null, typeof(RuntimeInformation));
                         var osPlatformType = new Tuple<string, Type>(null, typeof(OSPlatform));
 
@@ -401,7 +401,7 @@ namespace Microsoft.Build.Internal
                         availableStaticMethods.TryAdd("System.Int16", new Tuple<string, Type>(null, typeof(Int16)));
                         availableStaticMethods.TryAdd("System.Int32", new Tuple<string, Type>(null, typeof(Int32)));
                         availableStaticMethods.TryAdd("System.Int64", new Tuple<string, Type>(null, typeof(Int64)));
-                        availableStaticMethods.TryAdd("System.IO.Path", new Tuple<string, Type>(null, typeof(Path)));
+                        availableStaticMethods.TryAdd("System.IO.Path", new Tuple<string, Type>(null, typeof(System.IO.Path)));
                         availableStaticMethods.TryAdd("System.Math", new Tuple<string, Type>(null, typeof(Math)));
                         availableStaticMethods.TryAdd("System.UInt16", new Tuple<string, Type>(null, typeof(UInt16)));
                         availableStaticMethods.TryAdd("System.UInt32", new Tuple<string, Type>(null, typeof(UInt32)));
