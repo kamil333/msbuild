@@ -1246,7 +1246,7 @@ namespace Microsoft.Build.UnitTests.Evaluation
             }
             catch (Microsoft.Build.Exceptions.InvalidProjectFileException e)
             {
-                Assert.NotEqual(-1, e.Message.IndexOf("[System.IO.Path]::Combine(null, '')", StringComparison.OrdinalIgnoreCase));
+                e.Message.ShouldContain("[System.IO.Path]::Combine(null, '')", Case.Insensitive);
                 return;
             }
 
