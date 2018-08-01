@@ -1156,5 +1156,11 @@ namespace Microsoft.Build
                 }
             }
         }
+
+        public static string InternableToString(in ReadOnlySpan<char> aSpan)
+        {
+            // todo remove IInternable in favor of ReadOnlySpan
+            return aSpan.ToString();
+        }
     }
 }

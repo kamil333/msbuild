@@ -142,6 +142,9 @@
     <Compile Include="..\Shared\StringExtensions.cs">
       <Link>SharedUtilities\StringExtensions.cs</Link>
     </Compile>
+    <Compile Include="..\Shared\SpanExtensions.cs">
+      <Link>SharedUtilities\SpanExtensions.cs</Link>
+    </Compile>
     <Compile Include="..\Shared\ReadOnlyEmptyCollection.cs">
       <Link>Collections\ReadOnlyEmptyCollection.cs</Link>
     </Compile>

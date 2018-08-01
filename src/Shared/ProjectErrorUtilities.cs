@@ -98,6 +98,17 @@ namespace Microsoft.Build.Shared
             VerifyThrowInvalidProject(false, null, elementLocation, resourceName, arg0, arg1);
         }
 
+        internal static void ThrowInvalidProjectWithSpan
+        (
+            IElementLocation elementLocation,
+            string resourceName,
+            ReadOnlySpan<char> arg0,
+            ReadOnlySpan<char> arg1
+        )
+        {
+            VerifyThrowInvalidProject(false, null, elementLocation, resourceName, arg0, arg1);
+        }
+
         /// <summary>
         /// Overload for three string format arguments.
         /// </summary>
@@ -172,6 +183,18 @@ namespace Microsoft.Build.Shared
             T1 arg0,
             T2 arg1
         )
+        {
+            VerifyThrowInvalidProject(condition, null, elementLocation, resourceName, arg0, arg1);
+        }
+
+        internal static void VerifyThrowInvalidProjectWithSpan
+            (
+            bool condition,
+            IElementLocation elementLocation,
+            string resourceName,
+            ReadOnlySpan<char> arg0,
+            ReadOnlySpan<char> arg1
+            )
         {
             VerifyThrowInvalidProject(condition, null, elementLocation, resourceName, arg0, arg1);
         }
@@ -301,6 +324,25 @@ namespace Microsoft.Build.Shared
             if (!condition)
             {
                 ThrowInvalidProject(errorSubCategoryResourceName, elementLocation, resourceName, arg0, arg1);
+            }
+        }
+
+        internal static void VerifyThrowInvalidProject
+            (
+            bool condition,
+            string errorSubCategoryResourceName,
+            IElementLocation elementLocation,
+            string resourceName,
+            ReadOnlySpan<char> arg0,
+            ReadOnlySpan<char> arg1
+            )
+        {
+            // PERF NOTE: check the condition here instead of pushing it into
+            // the ThrowInvalidProject() method, because that method always
+            // allocates memory for its variable array of arguments
+            if (!condition)
+            {
+                ThrowInvalidProject(errorSubCategoryResourceName, elementLocation, resourceName, arg0.ToString(), arg1.ToString());
             }
         }
 

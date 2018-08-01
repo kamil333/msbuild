@@ -1,10 +1,11 @@
-// Copyright (c) Microsoft. All rights reserved.
+﻿// Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
@@ -454,7 +455,7 @@ namespace Microsoft.Build.Evaluation
         /// <summary>
         /// Returns true if the supplied string contains a valid property name
         /// </summary>
-        private static bool IsValidPropertyName(string propertyName)
+        private static bool IsValidPropertyName(ReadOnlySpan<char> propertyName)
         {
             if (propertyName.Length == 0 || !XmlUtilities.IsValidInitialElementNameCharacter(propertyName[0]))
             {
@@ -478,7 +479,7 @@ namespace Microsoft.Build.Evaluation
         /// Takes the expression and the index to start at.
         /// Returns the index of the matching parenthesis, or -1 if it was not found.
         /// </summary>
-        private static int ScanForClosingParenthesis(string expression, int index)
+        private static int ScanForClosingParenthesis(ReadOnlySpan<char> expression, int index)
         {
             bool potentialPropertyFunction = false;
             bool potentialRegistryFunction = false;
@@ -493,7 +494,7 @@ namespace Microsoft.Build.Evaluation
         /// Also returns flags to indicate if a propertyfunction or registry property is likely
         /// to be found in the expression
         /// </summary>
-        private static int ScanForClosingParenthesis(string expression, int index, out bool potentialPropertyFunction, out bool potentialRegistryFunction)
+        private static int ScanForClosingParenthesis(ReadOnlySpan<char> expression, int index, out bool potentialPropertyFunction, out bool potentialRegistryFunction)
         {
             int nestLevel = 1;
             int length = expression.Length;
@@ -501,45 +502,39 @@ namespace Microsoft.Build.Evaluation
             potentialPropertyFunction = false;
             potentialRegistryFunction = false;
 
-            unsafe
+            // Scan for our closing ')'
+            while (index < length && nestLevel > 0)
             {
-                fixed (char* pchar = expression)
+                char character = expression[index];
+
+                if (character == '\'' || character == '`' || character == '"')
                 {
-                    // Scan for our closing ')'
-                    while (index < length && nestLevel > 0)
+                    index++;
+                    index = ScanForClosingQuote(character, expression, index);
+
+                    if (index < 0)
                     {
-                        char character = pchar[index];
-
-                        if (character == '\'' || character == '`' || character == '"')
-                        {
-                            index++;
-                            index = ScanForClosingQuote(character, expression, index);
-
-                            if (index < 0)
-                            {
-                                return -1;
-                            }
-                        }
-                        else if (character == '(')
-                        {
-                            nestLevel++;
-                        }
-                        else if (character == ')')
-                        {
-                            nestLevel--;
-                        }
-                        else if (character == '.' || character == '[' || character == '$')
-                        {
-                            potentialPropertyFunction = true;
-                        }
-                        else if (character == ':')
-                        {
-                            potentialRegistryFunction = true;
-                        }
-
-                        index++;
+                        return -1;
                     }
                 }
+                else if (character == '(')
+                {
+                    nestLevel++;
+                }
+                else if (character == ')')
+                {
+                    nestLevel--;
+                }
+                else if (character == '.' || character == '[' || character == '$')
+                {
+                    potentialPropertyFunction = true;
+                }
+                else if (character == ':')
+                {
+                    potentialRegistryFunction = true;
+                }
+
+                index++;
             }
 
             // We will have parsed past the ')', so step back one character
@@ -551,74 +546,36 @@ namespace Microsoft.Build.Evaluation
         /// <summary>
         /// Skip all characters until we find the matching quote character
         /// </summary>
-        private static int ScanForClosingQuote(char quoteChar, string expression, int index)
+        private static int ScanForClosingQuote(char quoteChar, ReadOnlySpan<char> expression, int index)
         {
-            unsafe
-            {
-                fixed (char* pchar = expression)
-                {
-                    // Scan for our closing quoteChar
-                    while (index < expression.Length)
-                    {
-                        if (pchar[index] == quoteChar)
-                        {
-                            return index;
-                        }
-
-                        index++;
-                    }
-                }
-            }
-
-            return -1;
+            return expression.IndexOf(quoteChar, index);
         }
 
         /// <summary>
         /// Add the argument in the StringBuilder to the arguments list, handling nulls
         /// appropriately
         /// </summary>
-        private static void AddArgument(List<string> arguments, ReuseableStringBuilder argumentBuilder)
+        private static void AddArgument(List<string> arguments, ReadOnlySpan<char> argumentsString, int argumentStartIndex, int argumentLength)
         {
-            // If we don't have something that can be treated as an argument
-            // then we should treat it as a null so that passing nulls
-            // becomes possible through an empty argument between commas.
-            ErrorUtilities.VerifyThrowArgumentNull(argumentBuilder, "argumentBuilder");
-
-            // we reached the end of an argument, add the builder's final result
-            // to our arguments. 
-            string argValue = OpportunisticIntern.InternableToString(argumentBuilder).Trim();
+            var argValue = argumentsString.Slice(argumentStartIndex, argumentLength).Trim();
 
             // We support passing of null through the argument constant value null
-            if (String.Compare("null", argValue, StringComparison.OrdinalIgnoreCase) == 0)
+            if (argValue.Equals("null".AsSpan(), StringComparison.OrdinalIgnoreCase))
             {
                 arguments.Add(null);
+                return;
             }
-            else
+
+            if (argValue.Length > 0 &&
+                ((argValue[0] == '\'' && argValue[argValue.Length - 1] == '\'') ||
+                 (argValue[0] == '`' && argValue[argValue.Length - 1] == '`') ||
+                 (argValue[0] == '"' && argValue[argValue.Length - 1] == '"'))
+                )
             {
-                if (argValue.Length > 0)
-                {
-                    if (argValue[0] == '\'' && argValue[argValue.Length - 1] == '\'')
-                    {
-                        arguments.Add(argValue.Trim(s_singleQuoteChar));
-                    }
-                    else if (argValue[0] == '`' && argValue[argValue.Length - 1] == '`')
-                    {
-                        arguments.Add(argValue.Trim(s_backtickChar));
-                    }
-                    else if (argValue[0] == '"' && argValue[argValue.Length - 1] == '"')
-                    {
-                        arguments.Add(argValue.Trim(s_doubleQuoteChar));
-                    }
-                    else
-                    {
-                        arguments.Add(argValue);
-                    }
-                }
-                else
-                {
-                    arguments.Add(argValue);
-                }
+                argValue = argValue.Slice(1, argValue.Length - 2);
             }
+
+            arguments.Add(OpportunisticIntern.InternableToString(argValue));
         }
 
         /// <summary>
@@ -627,74 +584,70 @@ namespace Microsoft.Build.Evaluation
         /// Returns an array of unexpanded arguments.
         /// If there are no arguments, returns an empty array.
         /// </summary>
-        private static string[] ExtractFunctionArguments(IElementLocation elementLocation, string expressionFunction, string argumentsString)
+        private static string[] ExtractFunctionArguments(IElementLocation elementLocation, ReadOnlySpan<char> expressionFunction, ReadOnlySpan<char> argumentsString)
         {
-            int argumentsContentLength = argumentsString.Length;
-
             List<string> arguments = new List<string>();
+            bool newArgument = true;
+            var argumentStartIndex = 0;
+            var argumentLength = 0;
 
-            // With the reuseable string builder, there's no particular need to initialize the length as it will already have grown.
-            using (var argumentBuilder = new ReuseableStringBuilder())
+            // Iterate over the contents of the arguments extracting the
+            // the individual arguments as we go
+            for (int n = 0; n < argumentsString.Length; n++)
             {
-                unsafe
+                if (newArgument)
                 {
-                    fixed (char* argumentsContent = argumentsString)
-                    {
-                        // Iterate over the contents of the arguments extracting the
-                        // the individual arguments as we go
-                        for (int n = 0; n < argumentsContentLength; n++)
-                        {
-                            // We found a property expression.. skip over all of it.
-                            if ((n < argumentsContentLength - 1) && (argumentsContent[n] == '$' && argumentsContent[n + 1] == '('))
-                            {
-                                int nestedPropertyStart = n;
-                                n += 2; // skip over the opening '$('
-
-                                // Scan for the matching closing bracket, skipping any nested ones
-                                n = ScanForClosingParenthesis(argumentsString, n);
-
-                                if (n == -1)
-                                {
-                                    ProjectErrorUtilities.ThrowInvalidProject(elementLocation, "InvalidFunctionPropertyExpression", expressionFunction, AssemblyResources.GetString("InvalidFunctionPropertyExpressionDetailMismatchedParenthesis"));
-                                }
-
-                                argumentBuilder.Append(argumentsString, nestedPropertyStart, (n - nestedPropertyStart) + 1);
-                            }
-                            else if (argumentsContent[n] == '`' || argumentsContent[n] == '"' || argumentsContent[n] == '\'')
-                            {
-                                int quoteStart = n;
-                                n += 1; // skip over the opening quote
-
-                                n = ScanForClosingQuote(argumentsString[quoteStart], argumentsString, n);
-
-                                if (n == -1)
-                                {
-                                    ProjectErrorUtilities.ThrowInvalidProject(elementLocation, "InvalidFunctionPropertyExpression", expressionFunction, AssemblyResources.GetString("InvalidFunctionPropertyExpressionDetailMismatchedQuote"));
-                                }
-
-                                argumentBuilder.Append(argumentsString, quoteStart, (n - quoteStart) + 1);
-                            }
-                            else if (argumentsContent[n] == ',')
-                            {
-                                // We have reached the end of the current argument, go ahead and add it
-                                // to our list
-                                AddArgument(arguments, argumentBuilder);
-
-                                // Clear out the argument builder ready for the next argument
-                                argumentBuilder.Remove(0, argumentBuilder.Length);
-                            }
-                            else
-                            {
-                                argumentBuilder.Append(argumentsContent[n]);
-                            }
-                        }
-                    }
+                    argumentStartIndex = n;
+                    argumentLength = 0;
+                    newArgument = false;
                 }
 
-                // This will either be the one and only argument, or the last one
-                // so add it to our list
-                AddArgument(arguments, argumentBuilder);
+                // We found a property expression.. skip over all of it.
+                if ((n < argumentsString.Length - 1) && (argumentsString[n] == '$' && argumentsString[n + 1] == '('))
+                {
+                    int nestedPropertyStart = n;
+                    n += 2; // skip over the opening '$('
+
+                    // Scan for the matching closing bracket, skipping any nested ones
+                    n = ScanForClosingParenthesis(argumentsString, n);
+
+                    if (n == -1)
+                    {
+                        ProjectErrorUtilities.ThrowInvalidProjectWithSpan(elementLocation, "InvalidFunctionPropertyExpression", expressionFunction, AssemblyResources.GetString("InvalidFunctionPropertyExpressionDetailMismatchedParenthesis").AsSpan());
+                    }
+
+                    argumentLength += (n - nestedPropertyStart) + 1;
+                }
+                else if (argumentsString[n] == '`' || argumentsString[n] == '"' || argumentsString[n] == '\'')
+                {
+                    int quoteStart = n;
+                    n += 1; // skip over the opening quote
+
+                    n = ScanForClosingQuote(argumentsString[quoteStart], argumentsString, n);
+
+                    if (n == -1)
+                    {
+                        ProjectErrorUtilities.ThrowInvalidProjectWithSpan(elementLocation, "InvalidFunctionPropertyExpression", expressionFunction, AssemblyResources.GetString("InvalidFunctionPropertyExpressionDetailMismatchedQuote").AsSpan());
+                    }
+
+                    argumentLength += (n - quoteStart) + 1;
+                }
+                else if (argumentsString[n] == ',')
+                {
+                    // We have reached the end of the current argument, go ahead and add it
+                    // to our list
+                    AddArgument(arguments, argumentsString, argumentStartIndex, argumentLength);
+
+                    newArgument = true;
+                }
+                else
+                {
+                    argumentLength += 1;
+                }
             }
+
+            // This is either be the one and only argument, or the last one.
+            AddArgument(arguments, argumentsString, argumentStartIndex, argumentLength);
 
             return arguments.ToArray();
         }
@@ -1026,7 +979,7 @@ namespace Microsoft.Build.Evaluation
                     // Scan for the matching closing bracket, skipping any nested ones
                     // This is a very complete, fast validation of parenthesis matching including for nested
                     // function calls.
-                    propertyEndIndex = ScanForClosingParenthesis(expression, propertyStartIndex + 2, out tryExtractPropertyFunction, out tryExtractRegistryFunction);
+                    propertyEndIndex = ScanForClosingParenthesis(expression.AsSpan(), propertyStartIndex + 2, out tryExtractPropertyFunction, out tryExtractRegistryFunction);
 
                     if (propertyEndIndex == -1)
                     {
@@ -1172,7 +1125,7 @@ namespace Microsoft.Build.Evaluation
                 UsedUninitializedProperties usedUninitializedProperties,
                 IFileSystem fileSystem)
             {
-                Function<T> function = null;
+                Function<T> function = Function<T>.CreateInvalidFunction();
                 string propertyName = propertyBody;
 
                 // Trim the body for compatibility reasons:
@@ -1186,7 +1139,7 @@ namespace Microsoft.Build.Evaluation
 
                 // If we don't have a clean propertybody then we'll do deeper checks to see
                 // if what we have is a function
-                if (!IsValidPropertyName(propertyBody))
+                if (!IsValidPropertyName(propertyBody.AsSpan())) //todo propagate span upwards
                 {
                     if (propertyBody.Contains(".") || propertyBody[0] == '[')
                     {
@@ -1197,18 +1150,18 @@ namespace Microsoft.Build.Evaluation
 
                         // This is a function
                         function = Function<T>.ExtractPropertyFunction(
-                            propertyBody,
+                            propertyBody.AsSpan(), //todo propagate span upwards
                             elementLocation,
                             propertyValue,
                             usedUninitializedProperties,
                             fileSystem);
 
                         // We may not have been able to parse out a function
-                        if (function != null)
+                        if (function.IsValid)
                         {
                             // We will have either extracted the actual property name
                             // or realised that there is none (static function), and have recorded a null
-                            propertyName = function.Receiver;
+                            propertyName = OpportunisticIntern.InternableToString(function.Receiver);
                         }
                         else
                         {
@@ -1260,7 +1213,7 @@ namespace Microsoft.Build.Evaluation
                     propertyValue = LookupProperty(properties, propertyName, elementLocation, usedUninitializedProperties);
                 }
 
-                if (function != null)
+                if (function.IsValid)
                 {
                     try
                     {
@@ -1996,7 +1949,7 @@ namespace Microsoft.Build.Evaluation
                     }
                     else if (argumentsExpression != null)
                     {
-                        arguments = ExtractFunctionArguments(elementLocation, argumentsExpression, argumentsExpression);
+                        arguments = ExtractFunctionArguments(elementLocation, argumentsExpression.AsSpan(), argumentsExpression.AsSpan());
                     }
 
                     IntrinsicItemFunctions<S>.ItemTransformFunction transformFunction = IntrinsicItemFunctions<S>.GetItemTransformFunction(elementLocation, functionName, typeof(S));
@@ -2445,16 +2398,16 @@ namespace Microsoft.Build.Evaluation
                     {
                         Function<P> function = new Function<P>(
                             typeof(string),
-                            item.Key,
-                            item.Key,
-                            functionName,
+                            item.Key.AsSpan(),
+                            item.Key.AsSpan(),
+                            functionName.AsSpan(),
                             arguments,
 #if FEATURE_TYPE_INVOKEMEMBER
                             BindingFlags.Public | BindingFlags.InvokeMethod,
 #else
                             BindingFlags.Public, InvokeType.InvokeMethod,
 #endif
-                            string.Empty,
+                            ReadOnlySpan<char>.Empty, 
                             expander.UsedUninitializedProperties,
                             expander._fileSystem);
 
@@ -2827,7 +2780,7 @@ namespace Microsoft.Build.Evaluation
         }
 #endif
 
-        private struct FunctionBuilder<T>
+        private ref struct FunctionBuilder<T>
             where T : class, IProperty
         {
             /// <summary>
@@ -2838,7 +2791,7 @@ namespace Microsoft.Build.Evaluation
             /// <summary>
             /// The name of the function
             /// </summary>
-            public string Name { get; set; }
+            public ReadOnlySpan<char> Name { get; set; }
 
             /// <summary>
             /// The arguments for the function
@@ -2848,12 +2801,12 @@ namespace Microsoft.Build.Evaluation
             /// <summary>
             /// The expression that this function is part of
             /// </summary>
-            public string Expression { get; set; }
+            public ReadOnlySpan<char> Expression { get; set; }
 
             /// <summary>
             /// The property name that this function is applied on
             /// </summary>
-            public string Receiver { get; set; }
+            public ReadOnlySpan<char> Receiver { get; set; }
 
             /// <summary>
             /// The binding flags that will be used during invocation of this function
@@ -2867,7 +2820,7 @@ namespace Microsoft.Build.Evaluation
             /// <summary>
             /// The remainder of the body once the function and arguments have been extracted
             /// </summary>
-            public string Remainder { get; set; }
+            public ReadOnlySpan<char> Remainder { get; set; }
 
             public IFileSystem FileSystem { get; set; }
 
@@ -2900,7 +2853,7 @@ namespace Microsoft.Build.Evaluation
         /// It is also responsible for executing the function
         /// </summary>
         /// <typeparam name="T">Type of the properties used to expand the expression</typeparam>
-        private class Function<T>
+        private ref struct Function<T>
             where T : class, IProperty
         {
             /// <summary>
@@ -2911,7 +2864,7 @@ namespace Microsoft.Build.Evaluation
             /// <summary>
             /// The name of the function
             /// </summary>
-            private string _methodMethodName;
+            private ReadOnlySpan<char> _methodMethodName;
 
             /// <summary>
             /// The arguments for the function
@@ -2921,12 +2874,12 @@ namespace Microsoft.Build.Evaluation
             /// <summary>
             /// The expression that this function is part of
             /// </summary>
-            private string _expression;
+            private ReadOnlySpan<char> _expression;
 
             /// <summary>
             /// The property name that this function is applied on
             /// </summary>
-            private string _receiver;
+            private ReadOnlySpan<char> _receiver;
 
             /// <summary>
             /// The binding flags that will be used during invocation of this function
@@ -2940,7 +2893,7 @@ namespace Microsoft.Build.Evaluation
             /// <summary>
             /// The remainder of the body once the function and arguments have been extracted
             /// </summary>
-            private string _remainder;
+            private ReadOnlySpan<char> _remainder;
 
             /// <summary>
             /// List of properties which have been used but have not been initialized yet.
@@ -2949,20 +2902,22 @@ namespace Microsoft.Build.Evaluation
 
             private IFileSystem _fileSystem;
 
+            internal bool IsValid { get; private set; }
+
             /// <summary>
             /// Construct a function that will be executed during property evaluation
             /// </summary>
             internal Function(
                 Type receiverType,
-                string expression,
-                string receiver,
-                string methodName,
+                ReadOnlySpan<char> expression,
+                ReadOnlySpan<char> receiver,
+                ReadOnlySpan<char> methodName,
                 string[] arguments,
                 BindingFlags bindingFlags,
 #if !FEATURE_TYPE_INVOKEMEMBER
                 InvokeType invokeType,
 #endif
-                string remainder,
+                ReadOnlySpan<char> remainder,
                 UsedUninitializedProperties usedUninitializedProperties,
                 IFileSystem fileSystem)
             {
@@ -2986,7 +2941,11 @@ namespace Microsoft.Build.Evaluation
                 _remainder = remainder;
                 _usedUninitializedProperties = usedUninitializedProperties;
                 _fileSystem = fileSystem;
+
+                IsValid = true;
             }
+
+            internal static Function<T> CreateInvalidFunction() => new Function<T> {IsValid = false};
 
             /// <summary>
             /// Part of the extraction may result in the name of the property
@@ -2995,7 +2954,7 @@ namespace Microsoft.Build.Evaluation
             ///     [System.Diagnostics.Process]::Start
             ///     SomeMSBuildProperty
             /// </summary>
-            internal string Receiver
+            internal ReadOnlySpan<char> Receiver
             {
                 get { return _receiver; }
             }
@@ -3004,7 +2963,7 @@ namespace Microsoft.Build.Evaluation
             /// Extract the function details from the given property function expression
             /// </summary>
             internal static Function<T> ExtractPropertyFunction(
-                string expressionFunction,
+                ReadOnlySpan<char> expressionFunction,
                 IElementLocation elementLocation,
                 object propertyValue,
                 UsedUninitializedProperties usedUnInitializedProperties,
@@ -3023,11 +2982,11 @@ namespace Microsoft.Build.Evaluation
                 // If we have arguments, then we only want the content up to but not including the '('
                 if (argumentStartIndex > -1)
                 {
-                    expressionRoot = expressionFunction.Substring(0, argumentStartIndex);
+                    expressionRoot = expressionFunction.Slice(0, argumentStartIndex);
                 }
 
                 // In case we ended up with something we don't understand
-                ProjectErrorUtilities.VerifyThrowInvalidProject(!String.IsNullOrEmpty(expressionRoot), elementLocation, "InvalidFunctionPropertyExpression", expressionFunction, String.Empty);
+                ProjectErrorUtilities.VerifyThrowInvalidProjectWithSpan(!expressionRoot.IsEmpty, elementLocation, "InvalidFunctionPropertyExpression", expressionFunction, ReadOnlySpan<char>.Empty);
 
                 functionBuilder.Expression = expressionFunction;
                 functionBuilder.UsedUninitializedProperties = usedUnInitializedProperties;
@@ -3041,10 +3000,10 @@ namespace Microsoft.Build.Evaluation
                     if (typeEndIndex < 1)
                     {
                         // We ended up with something other than a function expression
-                        ProjectErrorUtilities.ThrowInvalidProject(elementLocation, "InvalidFunctionStaticMethodSyntax", expressionFunction, String.Empty);
+                        ProjectErrorUtilities.ThrowInvalidProjectWithSpan(elementLocation, "InvalidFunctionStaticMethodSyntax", expressionFunction, ReadOnlySpan<char>.Empty);
                     }
 
-                    var typeName = expressionRoot.Substring(1, typeEndIndex - 1);
+                    var typeName = expressionRoot.Slice(1, typeEndIndex - 1);
                     var methodStartIndex = typeEndIndex + 1;
 
                     if (expressionRoot.Length > methodStartIndex + 2 && expressionRoot[methodStartIndex] == ':' && expressionRoot[methodStartIndex + 1] == ':')
@@ -3055,24 +3014,24 @@ namespace Microsoft.Build.Evaluation
                     else
                     {
                         // We ended up with something other than a static function expression
-                        ProjectErrorUtilities.ThrowInvalidProject(elementLocation, "InvalidFunctionStaticMethodSyntax", expressionFunction, String.Empty);
+                        ProjectErrorUtilities.ThrowInvalidProjectWithSpan(elementLocation, "InvalidFunctionStaticMethodSyntax", expressionFunction, ReadOnlySpan<char>.Empty);
                     }
 
                     ConstructFunction(elementLocation, expressionFunction, argumentStartIndex, methodStartIndex, ref functionBuilder);
 
                     // Locate a type that matches the body of the expression.
-                    var receiverType = GetTypeForStaticMethod(typeName, functionBuilder.Name);
+                    var receiverType = GetTypeForStaticMethod(OpportunisticIntern.InternableToString(typeName), OpportunisticIntern.InternableToString(functionBuilder.Name));
 
                     if (receiverType == null)
                     {
                         // We ended up with something other than a type
-                        ProjectErrorUtilities.ThrowInvalidProject(elementLocation, "InvalidFunctionTypeUnavailable", expressionFunction, typeName);
+                        ProjectErrorUtilities.ThrowInvalidProjectWithSpan(elementLocation, "InvalidFunctionTypeUnavailable", expressionFunction, typeName);
                     }
 
                     // Check that the function that we're going to call is valid to call
-                    if (!IsStaticMethodAvailable(receiverType, functionBuilder.Name))
+                    if (!IsStaticMethodAvailable(receiverType, OpportunisticIntern.InternableToString(functionBuilder.Name)))
                     {
-                        ProjectErrorUtilities.ThrowInvalidProject(elementLocation, "InvalidFunctionMethodUnavailable", functionBuilder.Name, receiverType.FullName);
+                        ProjectErrorUtilities.ThrowInvalidProjectWithSpan(elementLocation, "InvalidFunctionMethodUnavailable", functionBuilder.Name, receiverType.FullName.AsSpan());
                     }
 
                     functionBuilder.ReceiverType = receiverType;
@@ -3083,7 +3042,7 @@ namespace Microsoft.Build.Evaluation
                     if (indexerEndIndex < 1)
                     {
                         // We ended up with something other than a function expression
-                        ProjectErrorUtilities.ThrowInvalidProject(elementLocation, "InvalidFunctionPropertyExpression", expressionFunction, AssemblyResources.GetString("InvalidFunctionPropertyExpressionDetailMismatchedSquareBrackets"));
+                        ProjectErrorUtilities.ThrowInvalidProjectWithSpan(elementLocation, "InvalidFunctionPropertyExpression", expressionFunction, AssemblyResources.GetString("InvalidFunctionPropertyExpressionDetailMismatchedSquareBrackets").AsSpan());
                     }
 
                     var methodStartIndex = indexerEndIndex + 1;
@@ -3098,8 +3057,8 @@ namespace Microsoft.Build.Evaluation
                     var methodStartIndex = expressionRoot.IndexOf('.');
                     if (methodStartIndex == -1)
                     {
-                        // We don't have a function invocation in the expression root, return null
-                        return null;
+                        // We don't have a function invocation in the expression root, return an invalid function
+                        return CreateInvalidFunction();
                     }
 
                     // skip over the '.';
@@ -3108,13 +3067,13 @@ namespace Microsoft.Build.Evaluation
                     var rootEndIndex = expressionRoot.IndexOf('.');
 
                     // If this is an instance function rather than a static, then we'll capture the name of the property referenced
-                    var functionReceiver = expressionRoot.Substring(0, rootEndIndex).Trim();
+                    var functionReceiver = expressionRoot.Slice(0, rootEndIndex).Trim();
 
                     // If propertyValue is null (we're not recursing), then we're expecting a valid property name
                     if (propertyValue == null && !IsValidPropertyName(functionReceiver))
                     {
                         // We extracted something that wasn't a valid property name, fail.
-                        ProjectErrorUtilities.ThrowInvalidProject(elementLocation, "InvalidFunctionPropertyExpression", expressionFunction, String.Empty);
+                        ProjectErrorUtilities.ThrowInvalidProjectWithSpan(elementLocation, "InvalidFunctionPropertyExpression", expressionFunction, ReadOnlySpan<char>.Empty);
                     }
 
                     // If we are recursively acting on a type that has been already produced then pass that type inwards (e.g. we are interpreting a function call chain)
@@ -3240,7 +3199,10 @@ namespace Microsoft.Build.Evaluation
                     // This special casing is to realize that its a comparison that is taking place and handle the
                     // argument type coercion accordingly; effectively pre-preparing the argument type so 
                     // that it matches the left hand side ready for the default binder’s method invoke.
-                    if (objectInstance != null && args.Length == 1 && (String.Equals("Equals", _methodMethodName, StringComparison.OrdinalIgnoreCase) || String.Equals("CompareTo", _methodMethodName, StringComparison.OrdinalIgnoreCase)))
+                    if (objectInstance != null
+                        && args.Length == 1
+                        && (_methodMethodName.Equals("Equals".AsSpan(), StringComparison.OrdinalIgnoreCase)
+                            || _methodMethodName.Equals("CompareTo".AsSpan(), StringComparison.OrdinalIgnoreCase)))
                     {
                         // change the type of the final unescaped string into the destination
                         args[0] = Convert.ChangeType(args[0], objectInstance.GetType(), CultureInfo.InvariantCulture);
@@ -3251,7 +3213,7 @@ namespace Microsoft.Build.Evaluation
                         // Special case a few methods that take extra parameters that can't be passed in by the user
                         //
 
-                        if (_methodMethodName.Equals("GetPathOfFileAbove") && args.Length == 1)
+                        if (_methodMethodName.Equals("GetPathOfFileAbove".AsSpan(), StringComparison.Ordinal) && args.Length == 1)
                         {
                             // Append the IElementLocation as a parameter to GetPathOfFileAbove if the user only
                             // specified the file name.  This is syntactic sugar so they don't have to always
@@ -3273,7 +3235,7 @@ namespace Microsoft.Build.Evaluation
 
                     // If we've been asked to construct an instance, then we
                     // need to locate an appropriate constructor and invoke it
-                    if (String.Equals("new", _methodMethodName, StringComparison.OrdinalIgnoreCase))
+                    if (_methodMethodName.Equals("new".AsSpan(), StringComparison.OrdinalIgnoreCase))
                     {
                         functionResult = LateBindExecute(null /* no previous exception */, BindingFlags.Public | BindingFlags.Instance, routedReceiverType, null /* no instance for a constructor */, args, true /* is constructor */);
                     }
@@ -3290,7 +3252,7 @@ namespace Microsoft.Build.Evaluation
                         // we need to preserve the same behavior on exceptions as the actual binder
                         catch (Exception ex)
                         {
-                            string partiallyEvaluated = GenerateStringOfMethodExecuted(_expression, objectInstance, _methodMethodName, args);
+                            var partiallyEvaluated = GenerateStringOfMethodExecuted(objectInstance, _methodMethodName.ToString(), args);
                             if (options.HasFlag(ExpanderOptions.LeavePropertiesUnexpandedOnError))
                             {
                                 return partiallyEvaluated;
@@ -3308,7 +3270,7 @@ namespace Microsoft.Build.Evaluation
                             {
 #if FEATURE_TYPE_INVOKEMEMBER
                                 // First use InvokeMember using the standard binder - this will match and coerce as needed
-                                functionResult = routedReceiverType.InvokeMember(_methodMethodName, _bindingFlags, Type.DefaultBinder, objectInstance, args, CultureInfo.InvariantCulture);
+                                functionResult = routedReceiverType.InvokeMember(OpportunisticIntern.InternableToString(_methodMethodName), _bindingFlags, Type.DefaultBinder, objectInstance, args, CultureInfo.InvariantCulture);
 #else
                                 if (_invokeType == InvokeType.InvokeMethod)
                                 {
@@ -3360,20 +3322,22 @@ namespace Microsoft.Build.Evaluation
                     // If the result of the function call is a string, then we need to escape the result
                     // so that we maintain the "engine contains escaped data" state.
                     // The exception is that the user is explicitly calling MSBuild::Unescape or MSBuild::Escape
-                    if (functionResult is string && !String.Equals("Unescape", _methodMethodName, StringComparison.OrdinalIgnoreCase) && !String.Equals("Escape", _methodMethodName, StringComparison.OrdinalIgnoreCase))
+                    if (functionResult is string
+                        && !_methodMethodName.Equals("Unescape".AsSpan(), StringComparison.OrdinalIgnoreCase)
+                        && !_methodMethodName.Equals("Escape".AsSpan(), StringComparison.OrdinalIgnoreCase))
                     {
                         functionResult = EscapingUtilities.Escape((string)functionResult);
                     }
 
                     // We have nothing left to parse, so we'll return what we have
-                    if (String.IsNullOrEmpty(_remainder))
+                    if (_remainder.IsEmpty)
                     {
                         return functionResult;
                     }
 
                     // Recursively expand the remaining property body after execution
                     return PropertyExpander<T>.ExpandPropertyBody(
-                        _remainder,
+                        _remainder.ToString(), //todo convert to span
                         functionResult,
                         properties,
                         options,
@@ -3386,7 +3350,7 @@ namespace Microsoft.Build.Evaluation
                 catch (TargetInvocationException ex)
                 {
                     // We ended up with something other than a function expression
-                    string partiallyEvaluated = GenerateStringOfMethodExecuted(_expression, objectInstance, _methodMethodName, args);
+                    string partiallyEvaluated = GenerateStringOfMethodExecuted(objectInstance, _methodMethodName.ToString(), args);
                     if (options.HasFlag(ExpanderOptions.LeavePropertiesUnexpandedOnError))
                     {
                         // If the caller wants to ignore errors (in a log statement for example), just return the partially evaluated value
@@ -3406,14 +3370,14 @@ namespace Microsoft.Build.Evaluation
 
                     // If there's a :: in the expression, they were probably trying for a static function
                     // invocation. Give them some more relevant info in that case
-                    if (s_invariantCompareInfo.IndexOf(_expression, "::", CompareOptions.OrdinalIgnoreCase) > -1)
+                    if (_expression.IndexOf("::".AsSpan(), StringComparison.OrdinalIgnoreCase) > -1)
                     {
-                        ProjectErrorUtilities.ThrowInvalidProject(elementLocation, "InvalidFunctionStaticMethodSyntax", _expression, ex.Message.Replace("Microsoft.Build.Evaluation.IntrinsicFunctions.", "[MSBuild]::"));
+                        ProjectErrorUtilities.ThrowInvalidProjectWithSpan(elementLocation, "InvalidFunctionStaticMethodSyntax", _expression, ex.Message.Replace("Microsoft.Build.Evaluation.IntrinsicFunctions.", "[MSBuild]::").AsSpan());
                     }
                     else
                     {
                         // We ended up with something other than a function expression
-                        string partiallyEvaluated = GenerateStringOfMethodExecuted(_expression, objectInstance, _methodMethodName, args);
+                        string partiallyEvaluated = GenerateStringOfMethodExecuted(objectInstance, _methodMethodName.ToString(), args);
                         ProjectErrorUtilities.ThrowInvalidProject(elementLocation, "InvalidFunctionPropertyExpression", partiallyEvaluated, ex.Message);
                     }
 
@@ -3444,7 +3408,7 @@ namespace Microsoft.Build.Evaluation
 
                 if (objectInstance is string text)
                 {
-                    if (string.Equals(_methodMethodName, nameof(string.StartsWith), StringComparison.OrdinalIgnoreCase))
+                    if (_methodMethodName.Equals(nameof(string.StartsWith).AsSpan(), StringComparison.OrdinalIgnoreCase))
                     {
                         if (TryGetArg(args, out string arg0))
                         {
@@ -3452,7 +3416,7 @@ namespace Microsoft.Build.Evaluation
                             return true;
                         }
                     }
-                    else if (string.Equals(_methodMethodName, nameof(string.Replace), StringComparison.OrdinalIgnoreCase))
+                    else if (_methodMethodName.Equals(nameof(string.Replace).AsSpan(), StringComparison.OrdinalIgnoreCase))
                     {
                         if (TryGetArgs(args, out string arg0, out string arg1))
                         {
@@ -3460,7 +3424,7 @@ namespace Microsoft.Build.Evaluation
                             return true;
                         }
                     }
-                    else if (string.Equals(_methodMethodName, nameof(string.Contains), StringComparison.OrdinalIgnoreCase))
+                    else if (_methodMethodName.Equals(nameof(string.Contains).AsSpan(), StringComparison.OrdinalIgnoreCase))
                     {
                         if (TryGetArg(args, out string arg0))
                         {
@@ -3468,7 +3432,7 @@ namespace Microsoft.Build.Evaluation
                             return true;
                         }
                     }
-                    else if (string.Equals(_methodMethodName, nameof(string.ToUpperInvariant), StringComparison.OrdinalIgnoreCase))
+                    else if (_methodMethodName.Equals(nameof(string.ToUpperInvariant).AsSpan(), StringComparison.OrdinalIgnoreCase))
                     {
                         if (args.Length == 0)
                         {
@@ -3476,7 +3440,7 @@ namespace Microsoft.Build.Evaluation
                             return true;
                         }
                     }
-                    else if (string.Equals(_methodMethodName, nameof(string.ToLowerInvariant), StringComparison.OrdinalIgnoreCase))
+                    else if (_methodMethodName.Equals(nameof(string.ToLowerInvariant).AsSpan(), StringComparison.OrdinalIgnoreCase))
                     {
                         if (args.Length == 0)
                         {
@@ -3484,7 +3448,7 @@ namespace Microsoft.Build.Evaluation
                             return true;
                         }
                     }
-                    else if (string.Equals(_methodMethodName, nameof(string.EndsWith), StringComparison.OrdinalIgnoreCase))
+                    else if (_methodMethodName.Equals(nameof(string.EndsWith).AsSpan(), StringComparison.OrdinalIgnoreCase))
                     {
                         if (TryGetArg(args, out string arg0))
                         {
@@ -3492,7 +3456,7 @@ namespace Microsoft.Build.Evaluation
                             return true;
                         }
                     }
-                    else if (string.Equals(_methodMethodName, nameof(string.ToLower), StringComparison.OrdinalIgnoreCase))
+                    else if (_methodMethodName.Equals(nameof(string.ToLower).AsSpan(), StringComparison.OrdinalIgnoreCase))
                     {
                         if (args.Length == 0)
                         {
@@ -3500,7 +3464,7 @@ namespace Microsoft.Build.Evaluation
                             return true;
                         }
                     }
-                    else if (string.Equals(_methodMethodName, nameof(string.Length), StringComparison.OrdinalIgnoreCase))
+                    else if (_methodMethodName.Equals(nameof(string.Length).AsSpan(), StringComparison.OrdinalIgnoreCase))
                     {
                         if (args.Length == 0)
                         {
@@ -3508,7 +3472,7 @@ namespace Microsoft.Build.Evaluation
                             return true;
                         }
                     }
-                    else if (string.Equals(_methodMethodName, nameof(string.Substring), StringComparison.OrdinalIgnoreCase))
+                    else if (_methodMethodName.Equals(nameof(string.Substring).AsSpan(), StringComparison.OrdinalIgnoreCase))
                     {
                         if (TryGetArg(args, out int startIndex))
                         {
@@ -3521,7 +3485,7 @@ namespace Microsoft.Build.Evaluation
                             return true;
                         }
                     }
-                    else if (string.Equals(_methodMethodName, nameof(string.Split), StringComparison.OrdinalIgnoreCase))
+                    else if (_methodMethodName.Equals(nameof(string.Split).AsSpan(), StringComparison.OrdinalIgnoreCase))
                     {
                         if (TryGetArg(args, out string separator) && separator.Length == 1)
                         {
@@ -3529,7 +3493,7 @@ namespace Microsoft.Build.Evaluation
                             return true;
                         }
                     }
-                    else if (string.Equals(_methodMethodName, nameof(string.PadLeft), StringComparison.OrdinalIgnoreCase))
+                    else if (_methodMethodName.Equals(nameof(string.PadLeft).AsSpan(), StringComparison.OrdinalIgnoreCase))
                     {
                         if (TryGetArg(args, out int totalWidth))
                         {
@@ -3542,7 +3506,7 @@ namespace Microsoft.Build.Evaluation
                             return true;
                         }
                     }
-                    else if (string.Equals(_methodMethodName, nameof(string.PadRight), StringComparison.OrdinalIgnoreCase))
+                    else if (_methodMethodName.Equals(nameof(string.PadRight).AsSpan(), StringComparison.OrdinalIgnoreCase))
                     {
                         if (TryGetArg(args, out int totalWidth))
                         {
@@ -3555,7 +3519,7 @@ namespace Microsoft.Build.Evaluation
                             return true;
                         }
                     }
-                    else if (string.Equals(_methodMethodName, nameof(string.TrimStart), StringComparison.OrdinalIgnoreCase))
+                    else if (_methodMethodName.Equals(nameof(string.TrimStart).AsSpan(), StringComparison.OrdinalIgnoreCase))
                     {
                         if (TryGetArg(args, out string trimChars) && trimChars.Length > 0)
                         {
@@ -3563,7 +3527,7 @@ namespace Microsoft.Build.Evaluation
                             return true;
                         }
                     }
-                    else if (string.Equals(_methodMethodName, nameof(string.TrimEnd), StringComparison.OrdinalIgnoreCase))
+                    else if (_methodMethodName.Equals(nameof(string.TrimEnd).AsSpan(), StringComparison.OrdinalIgnoreCase))
                     {
                         if (TryGetArg(args, out string trimChars) && trimChars.Length > 0)
                         {
@@ -3571,7 +3535,7 @@ namespace Microsoft.Build.Evaluation
                             return true;
                         }
                     }
-                    else if (string.Equals(_methodMethodName, "get_Chars", StringComparison.OrdinalIgnoreCase))
+                    else if (_methodMethodName.Equals("get_Chars".AsSpan(), StringComparison.OrdinalIgnoreCase))
                     {
                         if (TryGetArg(args, out int index))
                         {
@@ -3583,7 +3547,7 @@ namespace Microsoft.Build.Evaluation
                 else if (objectInstance is string[])
                 {
                     string[] stringArray = (string[])objectInstance;
-                    if (string.Equals(_methodMethodName, "GetValue", StringComparison.OrdinalIgnoreCase))
+                    if (_methodMethodName.Equals("GetValue".AsSpan(), StringComparison.OrdinalIgnoreCase))
                     {
                         if (TryGetArg(args, out int index))
                         {
@@ -3596,7 +3560,7 @@ namespace Microsoft.Build.Evaluation
                 {
                     if (receiverType == typeof(string))
                     {
-                        if (string.Equals(_methodMethodName, nameof(string.IsNullOrWhiteSpace), StringComparison.OrdinalIgnoreCase))
+                        if (_methodMethodName.Equals(nameof(string.IsNullOrWhiteSpace).AsSpan(), StringComparison.OrdinalIgnoreCase))
                         {
                             if (TryGetArg(args, out string arg0))
                             {
@@ -3604,7 +3568,7 @@ namespace Microsoft.Build.Evaluation
                                 return true;
                             }
                         }
-                        else if (string.Equals(_methodMethodName, nameof(string.IsNullOrEmpty), StringComparison.OrdinalIgnoreCase))
+                        else if (_methodMethodName.Equals(nameof(string.IsNullOrEmpty).AsSpan(), StringComparison.OrdinalIgnoreCase))
                         {
                             if (TryGetArg(args, out string arg0))
                             {
@@ -3615,7 +3579,7 @@ namespace Microsoft.Build.Evaluation
                     }
                     else if (receiverType == typeof(Math))
                     {
-                        if (string.Equals(_methodMethodName, nameof(Math.Max), StringComparison.OrdinalIgnoreCase))
+                        if (_methodMethodName.Equals(nameof(Math.Max).AsSpan(), StringComparison.OrdinalIgnoreCase))
                         {
                             if (TryGetArgs(args, out var arg0, out double arg1))
                             {
@@ -3623,7 +3587,7 @@ namespace Microsoft.Build.Evaluation
                                 return true;
                             }
                         }
-                        else if (string.Equals(_methodMethodName, nameof(Math.Min), StringComparison.OrdinalIgnoreCase))
+                        else if (_methodMethodName.Equals(nameof(Math.Min).AsSpan(), StringComparison.OrdinalIgnoreCase))
                         {
                             if (TryGetArgs(args, out double arg0, out var arg1))
                             {
@@ -3634,7 +3598,7 @@ namespace Microsoft.Build.Evaluation
                     }
                     else if (receiverType == typeof(IntrinsicFunctions))
                     {
-                        if (string.Equals(_methodMethodName, nameof(IntrinsicFunctions.EnsureTrailingSlash), StringComparison.OrdinalIgnoreCase))
+                        if (_methodMethodName.Equals(nameof(IntrinsicFunctions.EnsureTrailingSlash).AsSpan(), StringComparison.OrdinalIgnoreCase))
                         {
                             if (TryGetArg(args, out string arg0))
                             {
@@ -3642,7 +3606,7 @@ namespace Microsoft.Build.Evaluation
                                 return true;
                             }
                         }
-                        else if (string.Equals(_methodMethodName, nameof(IntrinsicFunctions.ValueOrDefault), StringComparison.OrdinalIgnoreCase))
+                        else if (_methodMethodName.Equals(nameof(IntrinsicFunctions.ValueOrDefault).AsSpan(), StringComparison.OrdinalIgnoreCase))
                         {
                             if (TryGetArgs(args, out string arg0, out string arg1))
                             {
@@ -3650,7 +3614,7 @@ namespace Microsoft.Build.Evaluation
                                 return true;
                             }
                         }
-                        else if (string.Equals(_methodMethodName, nameof(IntrinsicFunctions.NormalizePath), StringComparison.OrdinalIgnoreCase))
+                        else if (_methodMethodName.Equals(nameof(IntrinsicFunctions.NormalizePath).AsSpan(), StringComparison.OrdinalIgnoreCase))
                         {
                             if (ElementsOfType(args, typeof(string)))
                             {
@@ -3658,7 +3622,7 @@ namespace Microsoft.Build.Evaluation
                                 return true;
                             }
                         }
-                        else if (string.Equals(_methodMethodName, nameof(IntrinsicFunctions.GetDirectoryNameOfFileAbove), StringComparison.OrdinalIgnoreCase))
+                        else if (_methodMethodName.Equals(nameof(IntrinsicFunctions.GetDirectoryNameOfFileAbove).AsSpan(), StringComparison.OrdinalIgnoreCase))
                         {
                             if (TryGetArgs(args, out string arg0, out string arg1))
                             {
@@ -3666,7 +3630,7 @@ namespace Microsoft.Build.Evaluation
                                 return true;
                             }
                         }
-                        else if (string.Equals(_methodMethodName, nameof(IntrinsicFunctions.GetRegistryValueFromView), StringComparison.OrdinalIgnoreCase))
+                        else if (_methodMethodName.Equals(nameof(IntrinsicFunctions.GetRegistryValueFromView).AsSpan(), StringComparison.OrdinalIgnoreCase))
                         {
                             if (args.Length >= 4 &&
                                 TryGetArgs(args, out string arg0, out string arg1, enforceLength: false))
@@ -3675,7 +3639,7 @@ namespace Microsoft.Build.Evaluation
                                 return true;
                             }
                         }
-                        else if (string.Equals(_methodMethodName, nameof(IntrinsicFunctions.IsRunningFromVisualStudio), StringComparison.OrdinalIgnoreCase))
+                        else if (_methodMethodName.Equals(nameof(IntrinsicFunctions.IsRunningFromVisualStudio).AsSpan(), StringComparison.OrdinalIgnoreCase))
                         {
                             if (args.Length == 0)
                             {
@@ -3683,7 +3647,7 @@ namespace Microsoft.Build.Evaluation
                                 return true;
                             }
                         }
-                        else if (string.Equals(_methodMethodName, nameof(IntrinsicFunctions.Escape), StringComparison.OrdinalIgnoreCase))
+                        else if (_methodMethodName.Equals(nameof(IntrinsicFunctions.Escape).AsSpan(), StringComparison.OrdinalIgnoreCase))
                         {
                             if (TryGetArg(args, out string arg0))
                             {
@@ -3691,7 +3655,7 @@ namespace Microsoft.Build.Evaluation
                                 return true;
                             }
                         }
-                        else if (string.Equals(_methodMethodName, nameof(IntrinsicFunctions.GetPathOfFileAbove), StringComparison.OrdinalIgnoreCase))
+                        else if (_methodMethodName.Equals(nameof(IntrinsicFunctions.GetPathOfFileAbove).AsSpan(), StringComparison.OrdinalIgnoreCase))
                         {
                             if (TryGetArgs(args, out string arg0, out var arg1))
                             {
@@ -3699,7 +3663,7 @@ namespace Microsoft.Build.Evaluation
                                 return true;
                             }
                         }
-                        else if (string.Equals(_methodMethodName, nameof(IntrinsicFunctions.Add), StringComparison.OrdinalIgnoreCase))
+                        else if (_methodMethodName.Equals(nameof(IntrinsicFunctions.Add).AsSpan(), StringComparison.OrdinalIgnoreCase))
                         {
                             if (TryGetArgs(args, out double arg0, out var arg1))
                             {
@@ -3707,7 +3671,7 @@ namespace Microsoft.Build.Evaluation
                                 return true;
                             }
                         }
-                        else if (string.Equals(_methodMethodName, nameof(IntrinsicFunctions.Subtract), StringComparison.OrdinalIgnoreCase))
+                        else if (_methodMethodName.Equals(nameof(IntrinsicFunctions.Subtract).AsSpan(), StringComparison.OrdinalIgnoreCase))
                         {
                             if (TryGetArgs(args, out double arg0, out var arg1))
                             {
@@ -3715,7 +3679,7 @@ namespace Microsoft.Build.Evaluation
                                 return true;
                             }
                         }
-                        else if (string.Equals(_methodMethodName, nameof(IntrinsicFunctions.Multiply), StringComparison.OrdinalIgnoreCase))
+                        else if (_methodMethodName.Equals(nameof(IntrinsicFunctions.Multiply).AsSpan(), StringComparison.OrdinalIgnoreCase))
                         {
                             if (TryGetArgs(args, out double arg0, out var arg1))
                             {
@@ -3723,7 +3687,7 @@ namespace Microsoft.Build.Evaluation
                                 return true;
                             }
                         }
-                        else if (string.Equals(_methodMethodName, nameof(IntrinsicFunctions.Divide), StringComparison.OrdinalIgnoreCase))
+                        else if (_methodMethodName.Equals(nameof(IntrinsicFunctions.Divide).AsSpan(), StringComparison.OrdinalIgnoreCase))
                         {
                             if (TryGetArgs(args, out double arg0, out var arg1))
                             {
@@ -3734,7 +3698,7 @@ namespace Microsoft.Build.Evaluation
                     }
                     else if (receiverType == typeof(System.IO.Path))
                     {
-                        if (string.Equals(_methodMethodName, nameof(Path.Combine), StringComparison.OrdinalIgnoreCase))
+                        if (_methodMethodName.Equals(nameof(Path.Combine).AsSpan(), StringComparison.OrdinalIgnoreCase))
                         {
                             string arg0, arg1, arg2, arg3;
 
@@ -3780,7 +3744,7 @@ namespace Microsoft.Build.Evaluation
                                     break;
                             }
                         }
-                        else if (string.Equals(_methodMethodName, nameof(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase))
+                        else if (_methodMethodName.Equals(nameof(Path.DirectorySeparatorChar).AsSpan(), StringComparison.OrdinalIgnoreCase))
                         {
                             if (args.Length == 0)
                             {
@@ -3788,7 +3752,7 @@ namespace Microsoft.Build.Evaluation
                                 return true;
                             }
                         }
-                        else if (string.Equals(_methodMethodName, nameof(Path.GetFullPath), StringComparison.OrdinalIgnoreCase))
+                        else if (_methodMethodName.Equals(nameof(Path.GetFullPath).AsSpan(), StringComparison.OrdinalIgnoreCase))
                         {
                             if (TryGetArg(args, out string arg0))
                             {
@@ -3796,7 +3760,7 @@ namespace Microsoft.Build.Evaluation
                                 return true;
                             }
                         }
-                        else if (string.Equals(_methodMethodName, nameof(Path.IsPathRooted), StringComparison.OrdinalIgnoreCase))
+                        else if (_methodMethodName.Equals(nameof(Path.IsPathRooted).AsSpan(), StringComparison.OrdinalIgnoreCase))
                         {
                             if (TryGetArg(args, out string arg0))
                             {
@@ -3804,7 +3768,7 @@ namespace Microsoft.Build.Evaluation
                                 return true;
                             }
                         }
-                        else if (string.Equals(_methodMethodName, nameof(Path.GetTempPath), StringComparison.OrdinalIgnoreCase))
+                        else if (_methodMethodName.Equals(nameof(Path.GetTempPath).AsSpan(), StringComparison.OrdinalIgnoreCase))
                         {
                             if (args.Length == 0)
                             {
@@ -3812,7 +3776,7 @@ namespace Microsoft.Build.Evaluation
                                 return true;
                             }
                         }
-                        else if (string.Equals(_methodMethodName, nameof(Path.GetFileName), StringComparison.OrdinalIgnoreCase))
+                        else if (_methodMethodName.Equals(nameof(Path.GetFileName).AsSpan(), StringComparison.OrdinalIgnoreCase))
                         {
                             if (TryGetArg(args, out string arg0))
                             {
@@ -3820,7 +3784,7 @@ namespace Microsoft.Build.Evaluation
                                 return true;
                             }
                         }
-                        else if (string.Equals(_methodMethodName, nameof(Path.GetDirectoryName), StringComparison.OrdinalIgnoreCase))
+                        else if (_methodMethodName.Equals(nameof(Path.GetDirectoryName).AsSpan(), StringComparison.OrdinalIgnoreCase))
                         {
                             if (TryGetArg(args, out string arg0))
                             {
@@ -4055,7 +4019,7 @@ namespace Microsoft.Build.Evaluation
                     ? string.Join(", ", args.Select(a => a?.GetType().Name ?? "null"))
                     : string.Empty;
 
-                File.AppendAllText(logFile, $"ReceiverType={_receiverType?.FullName}; ObjectInstanceType={objectInstance?.GetType().FullName}; MethodName={_methodMethodName}({argSignature})\n");
+                File.AppendAllText(logFile, $"ReceiverType={_receiverType?.FullName}; ObjectInstanceType={objectInstance?.GetType().FullName}; MethodName={_methodMethodName.ToString()}({argSignature})\n");
             }
 
             /// <summary>
@@ -4234,23 +4198,16 @@ namespace Microsoft.Build.Evaluation
             /// Extracts the name, arguments, binding flags, and invocation type for an indexer
             /// Also extracts the remainder of the expression that is not part of this indexer
             /// </summary>
-            private static void ConstructIndexerFunction(string expressionFunction, IElementLocation elementLocation, object propertyValue, int methodStartIndex, int indexerEndIndex, ref FunctionBuilder<T> functionBuilder)
+            private static void ConstructIndexerFunction(ReadOnlySpan<char> expressionFunction, IElementLocation elementLocation, object propertyValue, int methodStartIndex, int indexerEndIndex, ref FunctionBuilder<T> functionBuilder)
             {
-                string argumentsContent = expressionFunction.Substring(1, indexerEndIndex - 1);
-                string remainder = expressionFunction.Substring(methodStartIndex);
+                var argumentsContent = expressionFunction.Slice(1, indexerEndIndex - 1);
+                var remainder = expressionFunction.Slice(methodStartIndex);
                 string functionName;
                 string[] functionArguments;
 
-                // If there are no arguments, then just create an empty array
-                if (String.IsNullOrEmpty(argumentsContent))
-                {
-                    functionArguments = Array.Empty<string>();
-                }
-                else
-                {
-                    // We will keep empty entries so that we can treat them as null
-                    functionArguments = ExtractFunctionArguments(elementLocation, expressionFunction, argumentsContent);
-                }
+                functionArguments = argumentsContent.IsEmpty
+                    ? Array.Empty<string>() // If there are no arguments, then just create an empty array
+                    : ExtractFunctionArguments(elementLocation, expressionFunction, argumentsContent); // We will keep empty entries so that we can treat them as null
 
                 // choose the name of the function based on the type of the object that we
                 // are using.
@@ -4267,7 +4224,7 @@ namespace Microsoft.Build.Evaluation
                     functionName = "get_Item";
                 }
 
-                functionBuilder.Name = functionName;
+                functionBuilder.Name = functionName.AsSpan();
                 functionBuilder.Arguments = functionArguments;
 #if FEATURE_TYPE_INVOKEMEMBER
                 functionBuilder.BindingFlags = BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.InvokeMethod;
@@ -4282,16 +4239,16 @@ namespace Microsoft.Build.Evaluation
             /// Extracts the name, arguments, binding flags, and invocation type for a static or instance function.
             /// Also extracts the remainder of the expression that is not part of this function
             /// </summary>
-            private static void ConstructFunction(IElementLocation elementLocation, string expressionFunction, int argumentStartIndex, int methodStartIndex, ref FunctionBuilder<T> functionBuilder)
+            private static void ConstructFunction(IElementLocation elementLocation, ReadOnlySpan<char> expressionFunction, int argumentStartIndex, int methodStartIndex, ref FunctionBuilder<T> functionBuilder)
             {
                 // The unevaluated and unexpanded arguments for this function
                 string[] functionArguments;
 
                 // The name of the function that will be invoked
-                string functionName;
+                ReadOnlySpan<char> functionName;
 
                 // What's left of the expression once the function has been constructed
-                string remainder = String.Empty;
+                ReadOnlySpan<char> remainder = ReadOnlySpan<char>.Empty;
 
                 // The binding flags that we will use for this function's execution
                 BindingFlags defaultBindingFlags = BindingFlags.IgnoreCase | BindingFlags.Public;
@@ -4300,12 +4257,12 @@ namespace Microsoft.Build.Evaluation
 #endif
 
                 // There are arguments that need to be passed to the function
-                if (argumentStartIndex > -1 && !expressionFunction.Substring(methodStartIndex, argumentStartIndex - methodStartIndex).Contains("."))
+                if (argumentStartIndex > -1 && !expressionFunction.Slice(methodStartIndex, argumentStartIndex - methodStartIndex).Contains(".".AsSpan(), StringComparison.Ordinal))
                 {
-                    string argumentsContent;
+                    ReadOnlySpan<char> argumentsContent;
 
                     // separate the function and the arguments
-                    functionName = expressionFunction.Substring(methodStartIndex, argumentStartIndex - methodStartIndex).Trim();
+                    functionName = expressionFunction.Slice(methodStartIndex, argumentStartIndex - methodStartIndex).Trim();
 
                     // Skip the '('
                     argumentStartIndex++;
@@ -4315,7 +4272,7 @@ namespace Microsoft.Build.Evaluation
 
                     if (argumentsEndIndex == -1)
                     {
-                        ProjectErrorUtilities.ThrowInvalidProject(elementLocation, "InvalidFunctionPropertyExpression", expressionFunction, AssemblyResources.GetString("InvalidFunctionPropertyExpressionDetailMismatchedParenthesis"));
+                        ProjectErrorUtilities.ThrowInvalidProject(elementLocation, "InvalidFunctionPropertyExpression", expressionFunction.ToString(), AssemblyResources.GetString("InvalidFunctionPropertyExpressionDetailMismatchedParenthesis"));
                     }
 
                     // We have been asked for a method invocation
@@ -4328,16 +4285,16 @@ namespace Microsoft.Build.Evaluation
                     // It may be that there are '()' but no actual arguments content
                     if (argumentStartIndex == expressionFunction.Length - 1)
                     {
-                        argumentsContent = String.Empty;
+                        argumentsContent = ReadOnlySpan<char>.Empty;
                         functionArguments = Array.Empty<string>();
                     }
                     else
                     {
                         // we have content within the '()' so let's extract and deal with it
-                        argumentsContent = expressionFunction.Substring(argumentStartIndex, argumentsEndIndex - argumentStartIndex);
+                        argumentsContent = expressionFunction.Slice(argumentStartIndex, argumentsEndIndex - argumentStartIndex);
 
                         // If there are no arguments, then just create an empty array
-                        if (String.IsNullOrEmpty(argumentsContent))
+                        if (argumentsContent.IsEmpty)
                         {
                             functionArguments = Array.Empty<string>();
                         }
@@ -4347,7 +4304,7 @@ namespace Microsoft.Build.Evaluation
                             functionArguments = ExtractFunctionArguments(elementLocation, expressionFunction, argumentsContent);
                         }
 
-                        remainder = expressionFunction.Substring(argumentsEndIndex + 1).Trim();
+                        remainder = expressionFunction.Slice(argumentsEndIndex + 1).Trim();
                     }
                 }
                 else
@@ -4367,12 +4324,17 @@ namespace Microsoft.Build.Evaluation
                     if (nextMethodIndex > 0)
                     {
                         methodLength = nextMethodIndex - methodStartIndex;
-                        remainder = expressionFunction.Substring(nextMethodIndex).Trim();
+                        remainder = expressionFunction.Slice(nextMethodIndex).Trim();
                     }
 
-                    string netPropertyName = expressionFunction.Substring(methodStartIndex, methodLength).Trim();
+                    ReadOnlySpan<char> netPropertyName = expressionFunction.Slice(methodStartIndex, methodLength).Trim();
 
-                    ProjectErrorUtilities.VerifyThrowInvalidProject(netPropertyName.Length > 0, elementLocation, "InvalidFunctionPropertyExpression", expressionFunction, String.Empty);
+                    ProjectErrorUtilities.VerifyThrowInvalidProjectWithSpan(
+                        netPropertyName.Length > 0,
+                        elementLocation,
+                        "InvalidFunctionPropertyExpression",
+                        expressionFunction,
+                        ReadOnlySpan<char>.Empty);
 
                     // We have been asked for a property or a field
 #if FEATURE_TYPE_INVOKEMEMBER
@@ -4385,7 +4347,7 @@ namespace Microsoft.Build.Evaluation
                 }
 
                 // either there are no functions left or what we have is another function or an indexer
-                if (String.IsNullOrEmpty(remainder) || remainder[0] == '.' || remainder[0] == '[')
+                if (remainder.IsEmpty || remainder[0] == '.' || remainder[0] == '[')
                 {
                     functionBuilder.Name = functionName;
                     functionBuilder.Arguments = functionArguments;
@@ -4398,7 +4360,7 @@ namespace Microsoft.Build.Evaluation
                 else
                 {
                     // We ended up with something other than a function expression
-                    ProjectErrorUtilities.ThrowInvalidProject(elementLocation, "InvalidFunctionPropertyExpression", expressionFunction, String.Empty);
+                    ProjectErrorUtilities.ThrowInvalidProjectWithSpan(elementLocation, "InvalidFunctionPropertyExpression", expressionFunction, ReadOnlySpan<char>.Empty);
                 }
             }
 
@@ -4471,7 +4433,7 @@ namespace Microsoft.Build.Evaluation
             /// Make an attempt to create a string showing what we were trying to execute when we failed.
             /// This will show any intermediate evaluation which may help the user figure out what happened.
             /// </summary>
-            private string GenerateStringOfMethodExecuted(string expression, object objectInstance, string name, object[] args)
+            private string GenerateStringOfMethodExecuted(object objectInstance, string name, object[] args)
             {
                 string parameters = String.Empty;
                 if (args != null)
@@ -4616,7 +4578,7 @@ namespace Microsoft.Build.Evaluation
                 }
                 else
                 {
-                    memberInfo = receiverType.GetMethod(_methodMethodName, bindingFlags, null, types, null);
+                    memberInfo = receiverType.GetMethod(OpportunisticIntern.InternableToString(_methodMethodName), bindingFlags, null, types, null);
                 }
 
                 // If we didn't get a match on all string arguments,
@@ -4643,7 +4605,7 @@ namespace Microsoft.Build.Evaluation
                         // Simple match on name and number of params, we will be case insensitive
                         if (parameters.Length == _arguments.Length)
                         {
-                            if (isConstructor || String.Equals(member.Name, _methodMethodName, StringComparison.OrdinalIgnoreCase))
+                            if (isConstructor || _methodMethodName.Equals(member.Name.AsSpan(), StringComparison.OrdinalIgnoreCase))
                             {
                                 // we have a match on the name and argument number
                                 // now let's try to coerce the arguments we have
