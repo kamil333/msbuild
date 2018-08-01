@@ -20,9 +20,18 @@ namespace Microsoft.Build.Shared
             return startIndex + indexInSlice;
         }
 
-        public static string ExpensiveConvertToString(this ReadOnlySpan<char> aSpan)
+#if NETFRAMEWORK || MONO
+        //todo remove when full framework will get the StringBuilder span extensions from .net core
+        public static void Append(this StringBuilder builder, ReadOnlySpan<char> span)
         {
-            return aSpan.ToString();
+            builder.EnsureCapacity(builder.Length + span.Length);
+
+            for (var i = 0; i < span.Length; i++)
+            {
+                builder.Append(span[i]);
+            }
         }
+#endif
+
     }
 }

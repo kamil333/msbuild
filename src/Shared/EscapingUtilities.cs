@@ -35,6 +35,14 @@ namespace Microsoft.Build.Shared
             string escapedString
         )
         {
+            return UnescapeAll(escapedString.AsSpan(), out bool _);
+        }
+
+        internal static string UnescapeAll
+        (
+            ReadOnlySpan<char> escapedString
+        )
+        {
             return UnescapeAll(escapedString, out bool _);
         }
 
@@ -54,7 +62,7 @@ namespace Microsoft.Build.Shared
         /// <returns>unescaped string</returns>
         internal static string UnescapeAll
         (
-            string escapedString,
+            ReadOnlySpan<char> escapedString,
             out bool escapingWasNecessary
         )
         {
@@ -62,9 +70,9 @@ namespace Microsoft.Build.Shared
 
             // If the string doesn't contain anything, then by definition it doesn't
             // need unescaping.
-            if (String.IsNullOrEmpty(escapedString))
+            if (escapedString.IsEmpty)
             {
-                return escapedString;
+                return string.Empty;
             }
 
             // If there are no percent signs, just return the original string immediately.
@@ -72,7 +80,7 @@ namespace Microsoft.Build.Shared
             int indexOfPercent = escapedString.IndexOf('%');
             if (indexOfPercent == -1)
             {
-                return escapedString;
+                return escapedString.ToString();
             }
 
             // This is where we're going to build up the final string to return to the caller.
@@ -93,11 +101,17 @@ namespace Microsoft.Build.Shared
                 {
                     // First copy all the characters up to the current percent sign into
                     // the destination.
-                    unescapedString.Append(escapedString, currentPosition, indexOfPercent - currentPosition);
+                    unescapedString.Append(escapedString.Slice(currentPosition, indexOfPercent - currentPosition));
 
                     // Convert the %XX to an actual real character.
-                    string hexString = escapedString.Substring(indexOfPercent + 1, 2);
-                    char unescapedCharacter = (char)int.Parse(hexString, System.Globalization.NumberStyles.HexNumber,
+                    var hexString = escapedString.Slice(indexOfPercent + 1, 2);
+                    char unescapedCharacter = (char)int.Parse(
+#if NETFRAMEWORK || MONO
+                        hexString.ToString(),
+#else
+                        hexString,
+#endif
+                        System.Globalization.NumberStyles.HexNumber,
                         CultureInfo.InvariantCulture);
 
                     // if the unescaped character is not on the exception list, append it
@@ -116,7 +130,7 @@ namespace Microsoft.Build.Shared
 
             // Okay, there are no more percent signs in the input string, so just copy the remaining
             // characters into the destination.
-            unescapedString.Append(escapedString, currentPosition, escapedString.Length - currentPosition);
+            unescapedString.Append(escapedString.Slice(currentPosition, escapedString.Length - currentPosition));
 
             return StringBuilderCache.GetStringAndRelease(unescapedString);
         }

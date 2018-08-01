@@ -187,6 +187,31 @@ namespace Microsoft.Build.Shared
             VerifyThrowInvalidProject(condition, null, elementLocation, resourceName, arg0, arg1);
         }
 
+        internal static void VerifyThrowInvalidProjectWithFormattableArgument
+            (
+            bool condition,
+            IElementLocation elementLocation,
+            string resourceName,
+            string argumentTemplate1,
+            ReadOnlySpan<char> value1,
+            string argumentTemplate2,
+            ReadOnlySpan<char> value2
+            )
+        {
+            if (!condition)
+            {
+                var arg1 = string.IsNullOrEmpty(argumentTemplate1)
+                    ? string.Empty
+                    : string.Format(argumentTemplate1, value1.ToString());
+
+                var arg2 = string.IsNullOrEmpty(argumentTemplate2)
+                    ? string.Empty
+                    : string.Format(argumentTemplate2, value2.ToString());
+
+                ThrowInvalidProject(null, elementLocation, resourceName, arg1, arg2);
+            }
+        }
+
         internal static void VerifyThrowInvalidProjectWithSpan
             (
             bool condition,

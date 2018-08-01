@@ -46,6 +46,7 @@
     <Compile Include="..\Shared\FileUtilitiesRegex.cs" />
     <Compile Include="..\Shared\UnitTests\AssemblyResources.cs" />
     <Compile Include="..\Shared\Traits.cs" />
+    <Compile Include="..\Shared\SpanExtensions.cs"/>
   </ItemGroup>
 
   <ItemGroup>

@@ -90,6 +90,7 @@
     <Compile Include="..\Shared\ExceptionHandling.cs">
       <ExcludeFromStyleCop>true</ExcludeFromStyleCop>
     </Compile>
+    <Compile Include="..\Shared\SpanExtensions.cs" />
     <Compile Include="..\Shared\UnitTests\TestData\GlobbingTestData.cs">
       <Link>TestData\GlobbingTestData.cs</Link>
     </Compile>

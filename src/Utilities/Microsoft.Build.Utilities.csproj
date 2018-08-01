@@ -173,6 +173,9 @@
     <Compile Include="..\Shared\Traits.cs">
       <Link>Shared\Traits.cs</Link>
     </Compile>
+    <Compile Include="..\Shared\SpanExtensions.cs">
+      <Link>Shared\SpanExtensions.cs</Link>
+    </Compile>
   </ItemGroup>
 
   <ItemGroup>

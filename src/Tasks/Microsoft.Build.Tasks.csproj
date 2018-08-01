@@ -148,6 +148,7 @@
     <Compile Include="..\Shared\Traits.cs">
       <Link>SharedTraits.cs</Link>
     </Compile>
+    <Compile Include="..\Shared\SpanExtensions.cs"/>
     <Compile Include="..\Shared\VersionUtilities.cs">
       <Link>VersionUtilities.cs</Link>
       <ExcludeFromStyleCop>true</ExcludeFromStyleCop>
