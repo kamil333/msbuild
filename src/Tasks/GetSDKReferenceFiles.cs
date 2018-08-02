@@ -557,7 +557,7 @@ namespace Microsoft.Build.Tasks
                 outputItem.SetMetadata("TargetPath", file.TargetPath);
 
                 // Pri files need to know the root directory of the target path
-                if (Path.GetExtension(file.RedistFile).Equals(".PRI", StringComparison.OrdinalIgnoreCase))
+                if (Path.GetExtension(file.RedistFile.AsSpan()).Equals(".PRI".AsSpan(), StringComparison.OrdinalIgnoreCase))
                 {
                     outputItem.SetMetadata("Root", file.TargetRoot);
                 }
@@ -582,8 +582,7 @@ namespace Microsoft.Build.Tasks
                     bool matchesExtension = false;
                     foreach (var extension in _referenceExtensions)
                     {
-                        string fileExtension = Path.GetExtension(file);
-                        if (fileExtension.Equals(extension, StringComparison.OrdinalIgnoreCase))
+                        if (Path.GetExtension(file.AsSpan()).Equals(extension.AsSpan(), StringComparison.OrdinalIgnoreCase))
                         {
                             matchesExtension = true;
                             break;

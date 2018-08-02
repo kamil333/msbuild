@@ -481,7 +481,7 @@ namespace Microsoft.Build.Utilities
             // look for it in the path
             if (pathToTool != null)
             {
-                bool isOnlyFileName = Path.GetFileName(pathToTool).Length == pathToTool.Length;
+                bool isOnlyFileName = Path.GetFileName(pathToTool.AsSpan()).Length == pathToTool.Length;
                 if (!isOnlyFileName)
                 {
                     bool isExistingFile = FileSystems.Default.FileExists(pathToTool);

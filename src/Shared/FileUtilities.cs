@@ -238,6 +238,11 @@ namespace Microsoft.Build.Shared
             return ((c == Path.DirectorySeparatorChar) || (c == Path.AltDirectorySeparatorChar));
         }
 
+        internal static bool IsAnySlash(char c)
+        {
+            return c == '\\' || c == '/';
+        }
+
         /// <summary>
         /// Trims the string and removes any double quotes around it.
         /// </summary>
@@ -1152,12 +1157,13 @@ namespace Microsoft.Build.Shared
             fileSystem = fileSystem ?? DefaultFileSystem;
 
             // Canonicalize our starting location
-            string lookInDirectory = GetFullPath(startingDirectory);
+            var lookInDirectorySpan = GetFullPath(startingDirectory).AsSpan();
+            var fileNameSpan = fileName.AsSpan();
 
             do
             {
                 // Construct the path that we will use to test against
-                string possibleFileDirectory = Path.Combine(lookInDirectory, fileName);
+                string possibleFileDirectory = Path.Join(lookInDirectorySpan, fileNameSpan);
 
                 // If we successfully locate the file in the directory that we're
                 // looking in, simply return that location. Otherwise we'll
@@ -1165,16 +1171,16 @@ namespace Microsoft.Build.Shared
                 if (fileSystem.FileExists(possibleFileDirectory))
                 {
                     // We've found the file, return the directory we found it in
-                    return lookInDirectory;
+                    return lookInDirectorySpan.ToString();
                 }
                 else
                 {
                     // GetDirectoryName will return null when we reach the root
                     // terminating our search
-                    lookInDirectory = Path.GetDirectoryName(lookInDirectory);
+                    lookInDirectorySpan = Path.GetDirectoryName(lookInDirectorySpan);
                 }
             }
-            while (lookInDirectory != null);
+            while (!lookInDirectorySpan.IsEmpty);
 
             // When we didn't find the location, then return an empty string
             return String.Empty;
@@ -1200,6 +1206,37 @@ namespace Microsoft.Build.Shared
             string directoryName = GetDirectoryNameOfFileAbove(startingDirectory, file, fileSystem);
 
             return String.IsNullOrEmpty(directoryName) ? String.Empty : NormalizePath(directoryName, file);
+        }
+
+        internal static bool IsRoot(ReadOnlySpan<char> path)
+        {
+            var root = Path.GetPathRoot(path);
+
+            if (root.IsEmpty)
+            {
+                return false;
+            }
+
+            if (root[0] != path[0])
+            {
+                return false;
+            }
+
+            if (root.Length == path.Length)
+            {
+                return true;
+            }
+
+            // handle cases like c:\\\a\b\ or c:\\//
+            for (var i = path.Length - 1; i > 0; i--)
+            {
+                if (!IsAnySlash(path[i]) && path[i] != ':')
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         // Method is simple set of function calls and may inline;

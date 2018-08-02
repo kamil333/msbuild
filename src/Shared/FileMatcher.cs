@@ -261,7 +261,7 @@ namespace Microsoft.Build.Shared
             //    foo.txt, fo.txt and also f.txt
             return searchPattern.IndexOf("?.", StringComparison.Ordinal) != -1 ||
                    (
-                       Path.GetExtension(searchPattern).Length == (3 + 1 /* +1 for the period */) &&
+                       Path.GetExtension(searchPattern.AsSpan()).Length == (3 + 1 /* +1 for the period */) &&
                        searchPattern.IndexOf('*') != -1
                    ) ||
                    searchPattern.EndsWith("?", StringComparison.Ordinal);

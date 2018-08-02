@@ -481,8 +481,10 @@ namespace Microsoft.Build.Tasks
             // then we can short-circuit the File IO involved with GetAssemblyName()
             if (redistList != null)
             {
-                string extension = Path.GetExtension(path);
-                if (String.Compare(extension, ".dll", StringComparison.OrdinalIgnoreCase) == 0)
+                var pathSpan = path.AsSpan();
+
+                var extension = Path.GetExtension(pathSpan);
+                if (extension.Equals(".dll".AsSpan(), StringComparison.OrdinalIgnoreCase))
                 {
                     IEnumerable<AssemblyEntry> assemblyNames = redistList.FindAssemblyNameFromSimpleName
                         (
@@ -491,8 +493,8 @@ namespace Microsoft.Build.Tasks
 
                     foreach (AssemblyEntry a in assemblyNames)
                     {
-                        string filename = Path.GetFileName(path);
-                        string pathFromRedistList = Path.Combine(a.FrameworkDirectory, filename);
+                        var filename = Path.GetFileName(pathSpan);
+                        string pathFromRedistList = Path.Join(a.FrameworkDirectory.AsSpan(), filename);
 
                         if (String.Equals(path, pathFromRedistList, StringComparison.OrdinalIgnoreCase))
                         {
