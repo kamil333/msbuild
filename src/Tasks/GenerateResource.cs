@@ -962,8 +962,9 @@ namespace Microsoft.Build.Tasks
             // By default all file types that get here are considered dangerous
             bool dangerous = true;
 
-            if (String.Equals(Path.GetExtension(filename), ".resx", StringComparison.OrdinalIgnoreCase) ||
-                String.Equals(Path.GetExtension(filename), ".resw", StringComparison.OrdinalIgnoreCase))
+            var extensionSpan = Path.GetExtension(filename.AsSpan());
+            if (extensionSpan.Equals(".resx".AsSpan(), StringComparison.OrdinalIgnoreCase) ||
+                extensionSpan.Equals(".resw".AsSpan(), StringComparison.OrdinalIgnoreCase))
             {
                 // XML files are only dangerous if there are unrecognized objects in them
                 dangerous = false;

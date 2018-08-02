@@ -335,7 +335,7 @@ namespace Microsoft.Build.Execution
                             !FileUtilities.FileExistsNoThrow(assemblyFile, fileSystem)
                         )
                     {
-                        string replacedAssemblyFile = Path.Combine(Path.GetDirectoryName(assemblyFile), s_tasksCoreFilename);
+                        string replacedAssemblyFile = Path.Join(Path.GetDirectoryName(assemblyFile.AsSpan()), s_tasksCoreFilename.AsSpan());
 
                         if (FileUtilities.FileExistsNoThrow(replacedAssemblyFile, fileSystem))
                         {

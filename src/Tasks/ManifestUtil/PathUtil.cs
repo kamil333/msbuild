@@ -53,9 +53,11 @@ namespace Microsoft.Build.Tasks.Deployment.ManifestUtilities
 
         public static bool IsAssembly(string path)
         {
+            var pathSpan = path.AsSpan();
+
             if (String.IsNullOrEmpty(path)) throw new ArgumentNullException(nameof(path));
-            if (String.Equals(Path.GetExtension(path), ".application", StringComparison.Ordinal)) return true;
-            if (String.Equals(Path.GetExtension(path), ".manifest", StringComparison.Ordinal)) return true;
+            if (Path.GetExtension(pathSpan).Equals(".application".AsSpan(), StringComparison.Ordinal)) return true;
+            if (Path.GetExtension(pathSpan).Equals(".manifest".AsSpan(), StringComparison.Ordinal)) return true;
             if (!IsProgramFile(path)) return false; // optimization, don't want to sniff every every kind of file -- just dll's or exe's
             if (IsManagedAssembly(path)) return true;
             if (IsNativeAssembly(path)) return true;

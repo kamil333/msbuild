@@ -1301,7 +1301,7 @@ namespace Microsoft.Build.Evaluation
                 string projectFullPath = EscapingUtilities.Escape(_projectRootElement.FullPath);
                 string projectDirectory = EscapingUtilities.Escape(_projectRootElement.DirectoryPath);
 
-                int rootLength = Path.GetPathRoot(projectDirectory).Length;
+                int rootLength = Path.GetPathRoot(projectDirectory.AsSpan()).Length;
                 string projectDirectoryNoRoot = projectDirectory.Substring(rootLength);
                 projectDirectoryNoRoot = FileUtilities.EnsureNoTrailingSlash(projectDirectoryNoRoot);
                 projectDirectoryNoRoot = EscapingUtilities.Escape(FileUtilities.EnsureNoLeadingSlash(projectDirectoryNoRoot));

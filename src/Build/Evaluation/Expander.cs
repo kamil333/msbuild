@@ -1462,9 +1462,9 @@ namespace Microsoft.Build.Evaluation
                 }
                 else if (String.Equals(propertyName, ReservedPropertyNames.thisFileDirectoryNoRoot, StringComparison.OrdinalIgnoreCase))
                 {
-                    string directory = Path.GetDirectoryName(elementLocation.File);
+                    var directory = Path.GetDirectoryName(elementLocation.File.AsSpan());
                     int rootLength = Path.GetPathRoot(directory).Length;
-                    string directoryNoRoot = directory.Substring(rootLength);
+                    var directoryNoRoot = directory.Slice(rootLength).ToString();
                     directoryNoRoot = FileUtilities.EnsureTrailingSlash(directoryNoRoot);
                     directoryNoRoot = FileUtilities.EnsureNoLeadingSlash(directoryNoRoot);
                     value = directoryNoRoot;

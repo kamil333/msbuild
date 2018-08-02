@@ -178,9 +178,9 @@ namespace Microsoft.Build.Evaluation
             for (var i = 0; i < expandedCount; i++)
             {
                 var item = expanded[i];
-                if (state.EvaluationDirectory != null && !Path.IsPathRooted(item.ItemSpec))
+                if (state.EvaluationDirectory != null && !Path.IsPathFullyQualified(item.ItemSpec))
                 {
-                    list.Add(Path.GetFullPath(Path.Combine(state.EvaluationDirectory, item.ItemSpec)));
+                    list.Add(Path.GetFullPath(item.ItemSpec, state.EvaluationDirectory));
                 }
                 else
                 {

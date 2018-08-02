@@ -403,6 +403,8 @@ namespace Microsoft.Build.Shared
                 ErrorUtilities.VerifyThrow(itemSpec != null, "Need item-spec to modify.");
                 ErrorUtilities.VerifyThrow(modifier != null, "Need modifier to apply to item-spec.");
 
+                var itemSpecSpan = itemSpec.AsSpan();
+
                 string modifiedItemSpec = null;
 
                 try
@@ -443,7 +445,7 @@ namespace Microsoft.Build.Shared
                     else if (String.Compare(modifier, FileUtilities.ItemSpecModifiers.Filename, StringComparison.OrdinalIgnoreCase) == 0)
                     {
                         // if the item-spec is a root directory, it can have no filename
-                        if (Path.GetDirectoryName(itemSpec) == null)
+                        if (FileUtilities.IsRoot(itemSpecSpan))
                         {
                             // NOTE: this is to prevent Path.GetFileNameWithoutExtension() from treating server and share elements
                             // in a UNC file-spec as filenames e.g. \\server, \\server\share
@@ -458,7 +460,7 @@ namespace Microsoft.Build.Shared
                     else if (String.Compare(modifier, FileUtilities.ItemSpecModifiers.Extension, StringComparison.OrdinalIgnoreCase) == 0)
                     {
                         // if the item-spec is a root directory, it can have no extension
-                        if (Path.GetDirectoryName(itemSpec) == null)
+                        if (FileUtilities.IsRoot(itemSpecSpan))
                         {
                             // NOTE: this is to prevent Path.GetExtension() from treating server and share elements in a UNC
                             // file-spec as filenames e.g. \\server.ext, \\server\share.ext
@@ -632,7 +634,7 @@ namespace Microsoft.Build.Shared
                 if (fullPath.IndexOf(':') != fullPath.LastIndexOf(':'))
                 {
                     // Cause a better error to appear
-                    fullPath = Path.GetFullPath(Path.Combine(currentDirectory, itemSpec));
+                    fullPath = Path.GetFullPath(itemSpec, currentDirectory);
                 }
             }
         }

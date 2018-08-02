@@ -738,8 +738,8 @@ namespace Microsoft.Build.Shared
 
             // If the current runtime starts with correct prefix, then this is the runtime we want to use.
             // However, only if we're requesting current architecture -- otherwise, the base path may be different, so we'll need to look it up. 
-            string leaf = Path.GetFileName(currentRuntimePath);
-            if (leaf.StartsWith(prefix, StringComparison.Ordinal) && architecture == DotNetFrameworkArchitecture.Current)
+            var leaf = Path.GetFileName(currentRuntimePath.AsSpan());
+            if (leaf.StartsWith(prefix.AsSpan(), StringComparison.Ordinal) && architecture == DotNetFrameworkArchitecture.Current)
             {
                 return currentRuntimePath;
             }
@@ -881,11 +881,9 @@ namespace Microsoft.Build.Shared
                 }
             }
 
-            combinedPath = NativeMethodsShared.IsWindows
-                               ? Path.Combine(programFiles32, "Reference Assemblies\\Microsoft\\Framework")
-                               : Path.Combine(NativeMethodsShared.FrameworkBasePath, "xbuild-frameworks");
-
-            return Path.GetFullPath(combinedPath);
+            return NativeMethodsShared.IsWindows
+                               ? Path.GetFullPath("Reference Assemblies\\Microsoft\\Framework", programFiles32)
+                               : Path.GetFullPath("xbuild-frameworks", NativeMethodsShared.FrameworkBasePath);
         }
 
         /// <summary>
@@ -934,12 +932,11 @@ namespace Microsoft.Build.Shared
             try
             {
                 string path = targetFrameworkRootPath;
-                path = Path.Combine(path, frameworkName.Identifier);
-                path = Path.Combine(path, "v" + frameworkName.Version.ToString());
+                path = Path.Combine(path, frameworkName.Identifier, "v" + frameworkName.Version.ToString());
+                
                 if (!String.IsNullOrEmpty(frameworkName.Profile))
                 {
-                    path = Path.Combine(path, "Profile");
-                    path = Path.Combine(path, frameworkName.Profile);
+                    path = Path.Combine(path, "Profile", frameworkName.Profile);
                 }
 
                 path = Path.GetFullPath(path);

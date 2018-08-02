@@ -342,6 +342,7 @@ namespace Microsoft.Build.Construction
         /// </summary>
         private void DetermineWhetherToLoadReadOnly(string fullPath)
         {
+            var fullPathSpan = fullPath.AsSpan();
             if (_loadAsReadOnly == null)
             {
                 DetermineWhetherToLoadReadOnlyIfPossible();
@@ -353,23 +354,23 @@ namespace Microsoft.Build.Construction
                 else if (s_readOnlyFlags == ReadOnlyLoadFlags.LoadReadOnlyIfAppropriate)
                 {
                     // Only files from Microsoft
-                    if (Path.GetFileName(fullPath).StartsWith("Microsoft.", StringComparison.OrdinalIgnoreCase))
+                    if (Path.GetFileName(fullPathSpan).StartsWith("Microsoft.".AsSpan(), StringComparison.OrdinalIgnoreCase))
                     {
                         // If we are loading devdiv targets, we're in razzle
-                        if (Path.GetFileName(fullPath).StartsWith("Microsoft.DevDiv", StringComparison.OrdinalIgnoreCase))
+                        if (Path.GetFileName(fullPathSpan).StartsWith("Microsoft.DevDiv".AsSpan(), StringComparison.OrdinalIgnoreCase))
                         {
                             _loadAsReadOnly = true;
                         }
                         else // Else, only load if they're in program files or windows directories
                         {
                             ErrorUtilities.VerifyThrow(Path.IsPathRooted(fullPath), "should be full path");
-                            string directory = Path.GetDirectoryName(fullPath);
+                            var directory = Path.GetDirectoryName(fullPath.AsSpan());
 
                             string windowsFolder = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
 
-                            if ((!String.IsNullOrEmpty(windowsFolder) && directory.StartsWith(windowsFolder, StringComparison.OrdinalIgnoreCase)) ||
-                                (!String.IsNullOrEmpty(FrameworkLocationHelper.programFiles32) && directory.StartsWith(FrameworkLocationHelper.programFiles32, StringComparison.OrdinalIgnoreCase)) ||
-                                (!String.IsNullOrEmpty(FrameworkLocationHelper.programFiles64) && directory.StartsWith(FrameworkLocationHelper.programFiles64, StringComparison.OrdinalIgnoreCase)))
+                            if ((!String.IsNullOrEmpty(windowsFolder) && directory.StartsWith(windowsFolder.AsSpan(), StringComparison.OrdinalIgnoreCase)) ||
+                                (!String.IsNullOrEmpty(FrameworkLocationHelper.programFiles32) && directory.StartsWith(FrameworkLocationHelper.programFiles32.AsSpan(), StringComparison.OrdinalIgnoreCase)) ||
+                                (!String.IsNullOrEmpty(FrameworkLocationHelper.programFiles64) && directory.StartsWith(FrameworkLocationHelper.programFiles64.AsSpan(), StringComparison.OrdinalIgnoreCase)))
                             {
                                 _loadAsReadOnly = true;
                             }

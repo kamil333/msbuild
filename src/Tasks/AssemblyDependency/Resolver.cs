@@ -374,17 +374,17 @@ namespace Microsoft.Build.Tasks
                 if (candidateFullPath == null)
                 {
                     // If the file ends with an extension like .dll or .exe then just try that.
-                    string weakNameBaseExtension = Path.GetExtension(weakNameBase);
-                    string weakNameBaseFileName = Path.GetFileNameWithoutExtension(weakNameBase);
+                    var weakNameBaseExtension = Path.GetExtension(weakNameBase.AsSpan());
+                    var weakNameBaseFileName = Path.GetFileNameWithoutExtension(weakNameBase.AsSpan());
 
-                    if (!string.IsNullOrEmpty(weakNameBaseExtension) && !string.IsNullOrEmpty(weakNameBaseFileName))
+                    if (!weakNameBaseExtension.IsEmpty && !weakNameBaseFileName.IsEmpty)
                     {
                         foreach (string executableExtension in executableExtensions)
                         {
-                            if (String.Compare(executableExtension, weakNameBaseExtension, StringComparison.CurrentCultureIgnoreCase) == 0)
+                            if (executableExtension.AsSpan().Equals(weakNameBaseExtension, StringComparison.CurrentCultureIgnoreCase))
                             {
                                 string fullPath = Path.Combine(directory, weakNameBase);
-                                var extensionlessAssemblyName = new AssemblyNameExtension(weakNameBaseFileName);
+                                var extensionlessAssemblyName = new AssemblyNameExtension(weakNameBaseFileName.ToString());
 
                                 if (ResolveAsFile(fullPath, extensionlessAssemblyName, isPrimaryProjectReference, wantSpecificVersion, false, assembliesConsideredAndRejected))
                                 {

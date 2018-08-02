@@ -743,10 +743,9 @@ namespace Microsoft.Build.Evaluation
                 // Trim, because we don't want to do anything with empty values
                 // (those should cause an error)
                 string trimmedValue = path.Trim();
-                if (trimmedValue.Length > 0 && !Path.IsPathRooted(trimmedValue))
+                if (trimmedValue.Length > 0 && !Path.IsPathFullyQualified(trimmedValue))
                 {
-                    path = Path.GetFullPath(
-                        Path.Combine(BuildEnvironmentHelper.Instance.CurrentMSBuildToolsDirectory, trimmedValue));
+                    path = Path.GetFullPath(trimmedValue, BuildEnvironmentHelper.Instance.CurrentMSBuildToolsDirectory);
                 }
             }
             catch (Exception e) when (ExceptionHandling.IsIoRelatedException(e))

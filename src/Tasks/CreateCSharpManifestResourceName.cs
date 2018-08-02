@@ -156,13 +156,11 @@ namespace Microsoft.Build.Tasks
 
                 // only strip extension for .resx and .restext files
 
-                string sourceExtension = Path.GetExtension(info.cultureNeutralFilename);
+                var sourceExtension = Path.GetExtension(info.cultureNeutralFilename.AsSpan());
                 if (
-                        (0 == String.Compare(sourceExtension, ".resx", StringComparison.OrdinalIgnoreCase))
-                        ||
-                        (0 == String.Compare(sourceExtension, ".restext", StringComparison.OrdinalIgnoreCase))
-                        ||
-                        (0 == String.Compare(sourceExtension, ".resources", StringComparison.OrdinalIgnoreCase))
+                        (sourceExtension.Equals(".resx".AsSpan(), StringComparison.OrdinalIgnoreCase)) ||
+                        (sourceExtension.Equals(".restext".AsSpan(), StringComparison.OrdinalIgnoreCase)) ||
+                        (sourceExtension.Equals(".resources".AsSpan(), StringComparison.OrdinalIgnoreCase))
                     )
                 {
                     manifestName.Append(Path.Combine(everettCompatibleDirectoryName, Path.GetFileNameWithoutExtension(info.cultureNeutralFilename)));
@@ -178,9 +176,9 @@ namespace Microsoft.Build.Tasks
                     }
 
                     // If the original extension was .resources, add it back
-                    if (String.Equals(sourceExtension, ".resources", StringComparison.OrdinalIgnoreCase))
+                    if (sourceExtension.Equals(".resources".AsSpan(), StringComparison.OrdinalIgnoreCase))
                     {
-                        manifestName.Append(sourceExtension);
+                        manifestName.Append(sourceExtension.ToString());
                     }
                 }
                 else
@@ -213,8 +211,7 @@ namespace Microsoft.Build.Tasks
         /// <returns>True, if this is a validate source file.</returns>
         protected override bool IsSourceFile(string fileName)
         {
-            string extension = Path.GetExtension(fileName);
-            return (String.Compare(extension, ".cs", StringComparison.OrdinalIgnoreCase) == 0);
+            return Path.GetExtension(fileName.AsSpan()).Equals(".cs".AsSpan(), StringComparison.OrdinalIgnoreCase);
         }
     }
 }

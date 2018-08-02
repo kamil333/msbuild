@@ -100,10 +100,10 @@ namespace Microsoft.Build.Tasks
             bool pfxSuccess = true;
             if (!string.IsNullOrEmpty(KeyFile))
             {
-                string keyFileExtension = String.Empty;
+                var keyFileExtension = ReadOnlySpan<char>.Empty;
                 try
                 {
-                    keyFileExtension = Path.GetExtension(KeyFile);
+                    keyFileExtension = Path.GetExtension(KeyFile.AsSpan());
                 }
                 catch (ArgumentException ex)
                 {
@@ -112,7 +112,7 @@ namespace Microsoft.Build.Tasks
                 }
                 if (pfxSuccess)
                 {
-                    if (0 != String.Compare(keyFileExtension, pfxFileExtension, StringComparison.OrdinalIgnoreCase))
+                    if (!keyFileExtension.Equals(pfxFileExtension.AsSpan(), StringComparison.OrdinalIgnoreCase))
                     {
                         ResolvedKeyFile = KeyFile;
                     }

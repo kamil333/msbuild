@@ -113,10 +113,17 @@ namespace Microsoft.Build.BackEnd.SdkResolution
                 ProjectFileErrorUtilities.ThrowInvalidProjectFile(new BuildEventFileInfo(location), e, "SdkResolverManifestInvalid", pathToManifest, e.Message);
             }
 
-            if (!Path.IsPathRooted(path))
+            if (!Path.IsPathFullyQualified(path))
             {
-                path = Path.Combine(manifestFolder, path);
-                path = Path.GetFullPath(path);
+                if (Path.IsPathFullyQualified(manifestFolder))
+                {
+                    path = Path.GetFullPath(path, manifestFolder);
+                }
+                else
+                {
+                    path = Path.Combine(manifestFolder, path);
+                    path = Path.GetFullPath(path);
+                }
             }
 
             if (!TryAddAssembly(path, assembliesList))
