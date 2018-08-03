@@ -2,6 +2,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace Microsoft.Build.Shared
@@ -33,5 +34,13 @@ namespace Microsoft.Build.Shared
         }
 #endif
 
+        //todo Copied from corefx. Remove when it is made public in Path
+        public static ReadOnlySpan<char> TrimEndingDirectorySeparator(this ReadOnlySpan<char> path) =>
+            EndsInDirectorySeparator(path) && !FileUtilities.IsRoot(path) ?
+                path.Slice(0, path.Length - 1) :
+                path;
+
+        public static bool EndsInDirectorySeparator(this ReadOnlySpan<char> path)
+            => path.Length > 0 && FileUtilities.IsSlash(path[path.Length - 1]);
     }
 }

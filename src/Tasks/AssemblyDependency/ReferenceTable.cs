@@ -1692,14 +1692,18 @@ namespace Microsoft.Build.Tasks
                     {
                         // We don't look for associated files for FX assemblies.
                         bool hasFrameworkPath = false;
-                        string referenceDirectoryName = FileUtilities.EnsureTrailingSlash(reference.DirectoryName);
+
+                        // no trailing slash
+                        var referenceDirectoryName = reference.DirectoryName.AsSpan();
 
                         foreach (string frameworkPath in _frameworkPaths)
                         {
                             // frameworkPath is guaranteed to have a trailing slash, because 
                             // ResolveAssemblyReference.Execute takes care of adding it.
 
-                            if (String.Compare(referenceDirectoryName, frameworkPath, StringComparison.OrdinalIgnoreCase) == 0)
+                            var frameworkPathNoTrailingSlash = frameworkPath.AsSpan().TrimEndingDirectorySeparator();
+
+                            if (referenceDirectoryName.Equals(frameworkPathNoTrailingSlash, StringComparison.OrdinalIgnoreCase))
                             {
                                 hasFrameworkPath = true;
                             }
