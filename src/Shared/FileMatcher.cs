@@ -1050,9 +1050,10 @@ namespace Microsoft.Build.Shared
                 {
                     int indexOfNextSlash = recursionState.RemainingWildcardDirectory.IndexOfAny(directorySeparatorCharacters);
 
-                    pattern = indexOfNextSlash != -1 ? recursionState.RemainingWildcardDirectory.Substring(0, indexOfNextSlash) : recursionState.RemainingWildcardDirectory;
+                    var remainingWildcardDirectorySpan = recursionState.RemainingWildcardDirectory.AsSpan();
+                    var patternSpan = indexOfNextSlash != -1 ? remainingWildcardDirectorySpan.Slice(0, indexOfNextSlash) : remainingWildcardDirectorySpan;
 
-                    if (pattern == recursiveDirectoryMatch)
+                    if (patternSpan.Equals(recursiveDirectoryMatch.AsSpan(), StringComparison.Ordinal))
                     {
                         // If pattern turned into **, then there's no choice but to enumerate everything.
                         pattern = null;
@@ -1072,6 +1073,7 @@ namespace Microsoft.Build.Shared
                         // back into remainingWildcardDirectory.
                         // This is a performance optimization. We don't want to enumerate everything if we 
                         // don't have to.
+                        pattern = patternSpan.ToString();
                         recursionState.RemainingWildcardDirectory = indexOfNextSlash != -1 ? recursionState.RemainingWildcardDirectory.Substring(indexOfNextSlash + 1) : string.Empty;
                     }
                 }
@@ -2305,6 +2307,11 @@ namespace Microsoft.Build.Shared
             return files;
         }
 
-        private static bool IsRecursiveDirectoryMatch(string path) => path.TrimTrailingSlashes() == recursiveDirectoryMatch;
+        private static bool IsRecursiveDirectoryMatch(string path)
+        {
+            return path.AsSpan()
+                .TrimTrailingSlashes()
+                .Equals(recursiveDirectoryMatch.AsSpan(), StringComparison.Ordinal);
+        }
     }
 }

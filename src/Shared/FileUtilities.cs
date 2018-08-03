@@ -244,18 +244,6 @@ namespace Microsoft.Build.Shared
         }
 
         /// <summary>
-        /// Trims the string and removes any double quotes around it.
-        /// </summary>
-        internal static string TrimAndStripAnyQuotes(string path)
-        {
-            // Trim returns the same string if trimming isn't needed
-            path = path.Trim();
-            path = path.Trim(new char[] { '"' });
-
-            return path;
-        }
-
-        /// <summary>
         /// Get the directory name of a rooted full path
         /// </summary>
         /// <param name="fullPath"></param>
@@ -1005,9 +993,9 @@ namespace Microsoft.Build.Shared
             return paths.Aggregate(root, Path.Combine);
         }
 
-        internal static string TrimTrailingSlashes(this string s)
+        internal static ReadOnlySpan<char> TrimTrailingSlashes(this ReadOnlySpan<char> s)
         {
-            return s.TrimEnd(Slashes);
+            return s.TrimEnd('/').TrimEnd('\\');
         }
 
         /// <summary>
@@ -1035,7 +1023,7 @@ namespace Microsoft.Build.Shared
             return EnsureTrailingSlash(s);
         }
 
-        internal static string NormalizeForPathComparison(this string s) => s.ToPlatformSlash().TrimTrailingSlashes();
+        internal static string NormalizeForPathComparison(this string s) => s.ToPlatformSlash().AsSpan().TrimTrailingSlashes().ToString();
 
         // TODO: assumption on file system case sensitivity: https://github.com/Microsoft/msbuild/issues/781
         internal static bool PathsEqual(string path1, string path2)
