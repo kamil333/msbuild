@@ -70,7 +70,14 @@ namespace Microsoft.Build.Evaluation
             }
             else
             {
-                key = itemType + "." + name;
+                using (var sb = new ReuseableStringBuilder(itemType.Length + 1 + name.Length))
+                {
+                    sb.Append(itemType);
+                    sb.Append('.');
+                    sb.Append(name);
+
+                    key = sb.ToString();
+                }
             }
 
             string value = null;
