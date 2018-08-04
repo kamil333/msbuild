@@ -740,7 +740,12 @@ namespace Microsoft.Build.BackEnd.Logging
                 {
                     ErrorUtilities.VerifyThrow(targetBuildEventContext != null, "targetBuildEventContext is null");
 
-                    string message = ResourceUtilities.FormatResourceString((success ? "TargetFinishedSuccess" : "TargetFinishedFailure"), targetName, Path.GetFileName(projectFile));
+                    string message = ResourceUtilities.FormatResourceString(
+                        (success
+                            ? "TargetFinishedSuccess"
+                            : "TargetFinishedFailure"),
+                        targetName,
+                        OpportunisticIntern.InternableToString(Path.GetFileName(projectFile.AsSpan())));
 
                     TargetFinishedEventArgs buildEvent = new TargetFinishedEventArgs
                         (

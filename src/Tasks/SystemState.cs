@@ -488,7 +488,7 @@ namespace Microsoft.Build.Tasks
                 {
                     IEnumerable<AssemblyEntry> assemblyNames = redistList.FindAssemblyNameFromSimpleName
                         (
-                            Path.GetFileNameWithoutExtension(path)
+                            OpportunisticIntern.InternableToString(Path.GetFileNameWithoutExtension(path.AsSpan()))
                         );
 
                     foreach (AssemblyEntry a in assemblyNames)
