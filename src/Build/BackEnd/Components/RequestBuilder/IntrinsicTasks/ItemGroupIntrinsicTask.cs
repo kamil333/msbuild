@@ -87,7 +87,13 @@ namespace Microsoft.Build.BackEnd
                                 var keepMetadataEvaluated = bucket.Expander.ExpandIntoStringListLeaveEscaped(child.KeepMetadata, ExpanderOptions.ExpandAll, child.KeepMetadataLocation).ToList();
                                 if (keepMetadataEvaluated.Count > 0)
                                 {
-                                    keepMetadata = new HashSet<string>(keepMetadataEvaluated);
+                                    // todo use HashSet constructor with size when msbuild will target net4.7.2
+                                    keepMetadata = new HashSet<string>();
+
+                                    foreach (var metadata in keepMetadataEvaluated)
+                                    {
+                                        keepMetadata.Add(metadata.ToString());
+                                    }
                                 }
                             }
 
@@ -96,7 +102,13 @@ namespace Microsoft.Build.BackEnd
                                 var removeMetadataEvaluated = bucket.Expander.ExpandIntoStringListLeaveEscaped(child.RemoveMetadata, ExpanderOptions.ExpandAll, child.RemoveMetadataLocation).ToList();
                                 if (removeMetadataEvaluated.Count > 0)
                                 {
-                                    removeMetadata = new HashSet<string>(removeMetadataEvaluated);
+                                    // todo use HashSet constructor with size when msbuild will target net4.7.2
+                                    removeMetadata = new HashSet<string>();
+
+                                    foreach (var metadata in removeMetadataEvaluated)
+                                    {
+                                        removeMetadata.Add(metadata.ToString());
+                                    }
                                 }
                             }
 
@@ -364,9 +376,9 @@ namespace Microsoft.Build.BackEnd
                 {
                     var excludeSplits = ExpressionShredder.SplitSemiColonSeparatedList(evaluatedExclude);
 
-                    foreach (string excludeSplit in excludeSplits)
+                    foreach (var excludeSplit in excludeSplits)
                     {
-                        excludes.Add(excludeSplit);
+                        excludes.Add(excludeSplit.ToString());
                     }
                 }
             }
@@ -375,12 +387,13 @@ namespace Microsoft.Build.BackEnd
             var includeSplits = ExpressionShredder.SplitSemiColonSeparatedList(evaluatedInclude);
             ProjectItemInstanceFactory itemFactory = new ProjectItemInstanceFactory(this.Project, originalItem.ItemType);
 
-            foreach (string includeSplit in includeSplits)
+            foreach (var includeSplit in includeSplits)
             {
                 // If expression is "@(x)" copy specified list with its metadata, otherwise just treat as string
                 bool throwaway;
 
-                IList<ProjectItemInstance> itemsFromSplit = expander.ExpandSingleItemVectorExpressionIntoItems(includeSplit,
+                IList<ProjectItemInstance> itemsFromSplit = expander.ExpandSingleItemVectorExpressionIntoItems(
+                    includeSplit,
                     itemFactory,
                     ExpanderOptions.ExpandItems,
                     false /* do not include null expansion results */,
@@ -397,12 +410,14 @@ namespace Microsoft.Build.BackEnd
                 }
                 else
                 {
+                    var includeSplitString = includeSplit.ToString();
+
                     // The expression is not of the form "@(X)". Treat as string
 
                     // Pass the non wildcard expanded excludes here to fix https://github.com/Microsoft/msbuild/issues/2621
                     string[] includeSplitFiles = _engineFileUtilities.GetFileListEscaped(
                         Project.Directory,
-                        includeSplit,
+                        includeSplitString,
                         excludes);
 
                     foreach (string includeSplitFile in includeSplitFiles)
@@ -411,7 +426,7 @@ namespace Microsoft.Build.BackEnd
                             Project,
                             originalItem.ItemType,
                             includeSplitFile,
-                            includeSplit /* before wildcard expansion */,
+                            includeSplitString /* before wildcard expansion */,
                             null,
                             null,
                             originalItem.Location.File));
@@ -500,7 +515,7 @@ namespace Microsoft.Build.BackEnd
             // Split by semicolons
             var specificationPieces = expander.ExpandIntoStringListLeaveEscaped(specification, ExpanderOptions.ExpandAll, specificationLocation);
 
-            foreach (string piece in specificationPieces)
+            foreach (var piece in specificationPieces)
             {
                 // Take each individual path or file expression, and expand any
                 // wildcards.  Then loop through each file returned, and add it
@@ -509,7 +524,7 @@ namespace Microsoft.Build.BackEnd
                 // Don't unescape wildcards just yet - if there were any escaped, the caller wants to treat them
                 // as literals. Everything else is safe to unescape at this point, since we're only matching
                 // against the file system.
-                string[] fileList = _engineFileUtilities.GetFileListEscaped(Project.Directory, piece);
+                string[] fileList = _engineFileUtilities.GetFileListEscaped(Project.Directory, piece.ToString());
 
                 foreach (string file in fileList)
                 {

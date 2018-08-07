@@ -175,6 +175,14 @@ namespace Microsoft.Build.Shared
             return this;
         }
 
+        public ReuseableStringBuilder Append(ReadOnlySpan<char> aSpan)
+        {
+            LazyPrepare();
+            _cachedString = null;
+            _borrowedBuilder.Append(aSpan);
+            return this;
+        }
+
         /// <summary>
         /// Append a substring.
         /// </summary>

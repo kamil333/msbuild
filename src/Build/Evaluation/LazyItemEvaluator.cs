@@ -513,8 +513,10 @@ namespace Microsoft.Build.Evaluation
 
                     foreach (var excludeSplit in excludeSplits)
                     {
-                        operationBuilder.Excludes.Add(excludeSplit);
-                        AddItemReferences(excludeSplit, operationBuilder, itemElement.ExcludeLocation);
+                        var excludeSplitString = excludeSplit.ToString();
+
+                        operationBuilder.Excludes.Add(excludeSplitString);
+                        AddItemReferences(excludeSplitString, operationBuilder, itemElement.ExcludeLocation);
                     }
                 }
             }
@@ -598,8 +600,7 @@ namespace Microsoft.Build.Evaluation
             }
             else
             {
-                ExpressionShredder.ItemExpressionCapture match = Expander<P, I>.ExpandSingleItemVectorExpressionIntoExpressionCapture(
-                    expression, ExpanderOptions.ExpandItems, elementLocation);
+                ExpressionShredder.ItemExpressionCapture match = Expander<P, I>.ExpandSingleItemVectorExpressionIntoExpressionCapture(expression.AsSpan(), ExpanderOptions.ExpandItems, elementLocation);
 
                 if (match == null)
                 {

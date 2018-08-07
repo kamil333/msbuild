@@ -75,7 +75,7 @@ namespace Microsoft.Build.Evaluation
 
             foreach (string expression in expressions)
             {
-                GetReferencedItemNamesAndMetadata(expression, 0, expression.Length, ref pair, ShredderOptions.All);
+                GetReferencedItemNamesAndMetadata(expression.AsSpan(), 0, expression.Length, ref pair, ShredderOptions.All);
             }
 
             return pair;
@@ -88,7 +88,7 @@ namespace Microsoft.Build.Evaluation
         {
             ItemsAndMetadataPair pair = new ItemsAndMetadataPair(null, null);
 
-            GetReferencedItemNamesAndMetadata(expression, 0, expression.Length, ref pair, ShredderOptions.MetadataOutsideTransforms);
+            GetReferencedItemNamesAndMetadata(expression.AsSpan(), 0, expression.Length, ref pair, ShredderOptions.MetadataOutsideTransforms);
 
             bool result = (pair.Metadata != null && pair.Metadata.Count > 0);
 
@@ -100,7 +100,7 @@ namespace Microsoft.Build.Evaluation
         /// itemName and separator will be null if they are not found
         /// return value will be null if no transform expressions are found
         /// </summary>
-        internal static List<ItemExpressionCapture> GetReferencedItemExpressions(string expression)
+        internal static List<ItemExpressionCapture> GetReferencedItemExpressions(ReadOnlySpan<char> expression)
         {
             return GetReferencedItemExpressions(expression, 0, expression.Length);
         }
@@ -110,7 +110,7 @@ namespace Microsoft.Build.Evaluation
         /// itemName and separator will be null if they are not found
         /// return value will be null if no transform expressions are found
         /// </summary>
-        internal static List<ItemExpressionCapture> GetReferencedItemExpressions(string expression, int start, int end)
+        internal static List<ItemExpressionCapture> GetReferencedItemExpressions(ReadOnlySpan<char> expression, int start, int end)
         {
             List<ItemExpressionCapture> subExpressions = null;
 
@@ -127,8 +127,8 @@ namespace Microsoft.Build.Evaluation
                 if (Sink(expression, ref i, end, '@', '('))
                 {
                     List<ItemExpressionCapture> transformExpressions = null;
-                    string itemName = null;
-                    string separator = null;
+                    var itemName = ReadOnlySpan<char>.Empty;
+                    var separator = ReadOnlySpan<char>.Empty;
                     int separatorStart = -1;
                     int separatorLength = -1;
 
@@ -161,7 +161,7 @@ namespace Microsoft.Build.Evaluation
 
                     // Grab the name, but continue to verify it's a well-formed expression
                     // before we store it.
-                    string name = expression.Substring(startOfName, i - startOfName);
+                    var name = expression.Slice(startOfName, i - startOfName);
 
                     // return the item that we're working with
                     itemName = name;
@@ -185,7 +185,7 @@ namespace Microsoft.Build.Evaluation
                                 transformExpressions = new List<ItemExpressionCapture>();
                             }
 
-                            transformExpressions.Add(new ItemExpressionCapture(startQuoted, endQuoted - startQuoted, expression.Substring(startQuoted, endQuoted - startQuoted)));
+                            transformExpressions.Add(new ItemExpressionCapture(startQuoted, endQuoted - startQuoted, expression.Slice(startQuoted, endQuoted - startQuoted).ToString()));
                             continue;
                         }
 
@@ -236,7 +236,7 @@ namespace Microsoft.Build.Evaluation
 
                         separatorStart = i - startPoint;
                         separatorLength = closingQuote - i;
-                        separator = expression.Substring(i, separatorLength);
+                        separator = expression.Slice(i, separatorLength);
 
                         i = closingQuote + 1;
                     }
@@ -257,10 +257,15 @@ namespace Microsoft.Build.Evaluation
                         subExpressions = new List<ItemExpressionCapture>();
                     }
 
+                    var separatorString = separator.IsEmpty && separatorStart == -1 && separatorLength == -1
+                        ? null
+                        : separator.ToString();
+
                     // Create an expression capture that encompases the entire expression between the @( and the )
                     // with the item name and any separator contained within it
                     // and each transform expression contained within it (i.e. each ->XYZ)
-                    ItemExpressionCapture expressionCapture = new ItemExpressionCapture(startPoint, endPoint - startPoint, expression.Substring(startPoint, endPoint - startPoint), itemName, separator, separatorStart, transformExpressions);
+
+                    ItemExpressionCapture expressionCapture = new ItemExpressionCapture(startPoint, endPoint - startPoint, expression.Slice(startPoint, endPoint - startPoint).ToString(), itemName.ToString(), separatorString, separatorStart, transformExpressions);
                     subExpressions.Add(expressionCapture);
 
                     continue;
@@ -277,7 +282,7 @@ namespace Microsoft.Build.Evaluation
         /// <remarks>
         /// We can ignore any semicolons in the expression, since we're not itemizing it.
         /// </remarks>
-        private static void GetReferencedItemNamesAndMetadata(string expression, int start, int end, ref ItemsAndMetadataPair pair, ShredderOptions whatToShredFor)
+        private static void GetReferencedItemNamesAndMetadata(ReadOnlySpan<char> expression, int start, int end, ref ItemsAndMetadataPair pair, ShredderOptions whatToShredFor)
         {
             for (int i = start; i < end; i++)
             {
@@ -311,7 +316,7 @@ namespace Microsoft.Build.Evaluation
 
                     // Grab the name, but continue to verify it's a well-formed expression
                     // before we store it.
-                    string name = expression.Substring(startOfName, i - startOfName);
+                    var name = expression.Slice(startOfName, i - startOfName);
 
                     SinkWhitespace(expression, ref i);
 
@@ -387,7 +392,7 @@ namespace Microsoft.Build.Evaluation
                     if ((whatToShredFor & ShredderOptions.ItemTypes) != 0)
                     {
                         pair.Items = pair.Items ?? new HashSet<string>(MSBuildNameIgnoreCaseComparer.Default);
-                        pair.Items.Add(name);
+                        pair.Items.Add(name.ToString());
                     }
 
                     i--;
@@ -414,10 +419,9 @@ namespace Microsoft.Build.Evaluation
                     }
 
                     // Grab this, but we don't know if it's an item or metadata name yet
-                    string firstPart = expression.Substring(startOfText, i - startOfText);
-                    string itemName = null;
-                    string metadataName;
-                    string qualifiedMetadataName;
+                    var firstPart = expression.Slice(startOfText, i - startOfText);
+                    var itemName = ReadOnlySpan<char>.Empty;
+                    var metadataName = ReadOnlySpan<char>.Empty;
 
                     SinkWhitespace(expression, ref i);
 
@@ -436,13 +440,11 @@ namespace Microsoft.Build.Evaluation
                         }
 
                         itemName = firstPart;
-                        metadataName = expression.Substring(startOfText, i - startOfText);
-                        qualifiedMetadataName = itemName + "." + metadataName;
+                        metadataName = expression.Slice(startOfText, i - startOfText);
                     }
                     else
                     {
                         metadataName = firstPart;
-                        qualifiedMetadataName = metadataName;
                     }
 
                     SinkWhitespace(expression, ref i);
@@ -456,7 +458,16 @@ namespace Microsoft.Build.Evaluation
                     if ((whatToShredFor & ShredderOptions.MetadataOutsideTransforms) != 0)
                     {
                         pair.Metadata = pair.Metadata ?? new Dictionary<string, MetadataReference>(MSBuildNameIgnoreCaseComparer.Default);
-                        pair.Metadata[qualifiedMetadataName] = new MetadataReference(itemName, metadataName);
+
+
+                        var itemNameString = itemName.ToString();
+                        var metadataNameString = metadataName.ToString();
+
+                        var qualifiedMetadataName = qualified
+                            ? itemNameString + "." + metadataNameString
+                            : metadataNameString;
+
+                        pair.Metadata[qualifiedMetadataName] = new MetadataReference(itemNameString, metadataNameString);
                     }
 
                     i--;
@@ -469,7 +480,7 @@ namespace Microsoft.Build.Evaluation
         /// and ends before the specified end index.
         /// Leaves index one past the end of the second quote.
         /// </summary>
-        private static bool SinkSingleQuotedExpression(string expression, ref int i, int end)
+        private static bool SinkSingleQuotedExpression(ReadOnlySpan<char> expression, ref int i, int end)
         {
             if (!Sink(expression, ref i, '\''))
             {
@@ -497,52 +508,46 @@ namespace Microsoft.Build.Evaluation
         /// Takes the expression and the index to start at.
         /// Returns the index of the matching parenthesis, or -1 if it was not found.
         /// </summary>
-        private static bool SinkArgumentsInParentheses(string expression, ref int i, int end)
+        private static bool SinkArgumentsInParentheses(ReadOnlySpan<char> expression, ref int i, int end)
         {
             int nestLevel = 0;
             int length = expression.Length;
             int restartPoint;
 
-            unsafe
+            if (expression[i] == '(')
             {
-                fixed (char* pchar = expression)
+                nestLevel++;
+                i++;
+            }
+            else
+            {
+                return false;
+            }
+
+            // Scan for our closing ')'
+            while (i < length && i < end && nestLevel > 0)
+            {
+                char character = expression[i];
+
+                if (character == '\'' || character == '`' || character == '"')
                 {
-                    if (pchar[i] == '(')
+                    restartPoint = i;
+                    if (!SinkUntilClosingQuote(character, expression, ref i, end))
                     {
-                        nestLevel++;
-                        i++;
-                    }
-                    else
-                    {
+                        i = restartPoint;
                         return false;
                     }
-
-                    // Scan for our closing ')'
-                    while (i < length && i < end && nestLevel > 0)
-                    {
-                        char character = pchar[i];
-
-                        if (character == '\'' || character == '`' || character == '"')
-                        {
-                            restartPoint = i;
-                            if (!SinkUntilClosingQuote(character, expression, ref i, end))
-                            {
-                                i = restartPoint;
-                                return false;
-                            }
-                        }
-                        else if (character == '(')
-                        {
-                            nestLevel++;
-                        }
-                        else if (character == ')')
-                        {
-                            nestLevel--;
-                        }
-
-                        i++;
-                    }
                 }
+                else if (character == '(')
+                {
+                    nestLevel++;
+                }
+                else if (character == ')')
+                {
+                    nestLevel--;
+                }
+
+                i++;
             }
 
             if (nestLevel == 0)
@@ -558,26 +563,20 @@ namespace Microsoft.Build.Evaluation
         /// <summary>
         /// Skip all characters until we find the matching quote character
         /// </summary>
-        private static bool SinkUntilClosingQuote(char quoteChar, string expression, ref int i, int end)
+        private static bool SinkUntilClosingQuote(char quoteChar, ReadOnlySpan<char> expression, ref int i, int end)
         {
-            unsafe
+            // We have already checked the first quote
+            i++;
+
+            // Scan for our closing quoteChar
+            while (i < expression.Length && i < end)
             {
-                fixed (char* pchar = expression)
+                if (expression[i] == quoteChar)
                 {
-                    // We have already checked the first quote
-                    i++;
-
-                    // Scan for our closing quoteChar
-                    while (i < expression.Length && i < end)
-                    {
-                        if (pchar[i] == quoteChar)
-                        {
-                            return true;
-                        }
-
-                        i++;
-                    }
+                    return true;
                 }
+
+                i++;
             }
 
             return false;
@@ -588,7 +587,7 @@ namespace Microsoft.Build.Evaluation
         /// and ends before the specified end index.
         /// Leaves index one past the end of the closing paren.
         /// </summary>
-        private static ItemExpressionCapture SinkItemFunctionExpression(string expression, int startTransform, ref int i, int end)
+        private static ItemExpressionCapture SinkItemFunctionExpression(ReadOnlySpan<char> expression, int startTransform, ref int i, int end)
         {
             if (SinkValidName(expression, ref i, end))
             {
@@ -602,12 +601,12 @@ namespace Microsoft.Build.Evaluation
                 {
                     int endFunctionArguments = i - 1;
 
-                    ItemExpressionCapture capture = new ItemExpressionCapture(startTransform, i - startTransform, expression.Substring(startTransform, i - startTransform));
-                    capture.FunctionName = expression.Substring(startTransform, endFunctionName - startTransform);
+                    ItemExpressionCapture capture = new ItemExpressionCapture(startTransform, i - startTransform, expression.Slice(startTransform, i - startTransform).ToString());
+                    capture.FunctionName = expression.Slice(startTransform, endFunctionName - startTransform).ToString();
 
                     if (endFunctionArguments > startFunctionArguments)
                     {
-                        capture.FunctionArguments = expression.Substring(startFunctionArguments, endFunctionArguments - startFunctionArguments);
+                        capture.FunctionArguments = expression.Slice(startFunctionArguments, endFunctionArguments - startFunctionArguments).ToString();
                     }
 
                     return capture;
@@ -625,7 +624,7 @@ namespace Microsoft.Build.Evaluation
         /// Returns true if a valid name begins at the specified index.
         /// Leaves index one past the end of the name.
         /// </summary>
-        private static bool SinkValidName(string expression, ref int i, int end)
+        private static bool SinkValidName(ReadOnlySpan<char> expression, ref int i, int end)
         {
             if (end <= i || !XmlUtilities.IsValidInitialElementNameCharacter(expression[i]))
             {
@@ -647,7 +646,7 @@ namespace Microsoft.Build.Evaluation
         /// is the specified char. 
         /// Leaves index one past the character.
         /// </summary>
-        private static bool Sink(string expression, ref int i, char c)
+        private static bool Sink(ReadOnlySpan<char> expression, ref int i, char c)
         {
             if (i < expression.Length && expression[i] == c)
             {
@@ -663,7 +662,7 @@ namespace Microsoft.Build.Evaluation
         /// are the specified sequence.
         /// Leaves index one past the second character.
         /// </summary>
-        private static bool Sink(string expression, ref int i, int end, char c1, char c2)
+        private static bool Sink(ReadOnlySpan<char> expression, ref int i, int end, char c1, char c2)
         {
             if (i < end - 1 && expression[i] == c1 && expression[i + 1] == c2)
             {
@@ -684,7 +683,7 @@ namespace Microsoft.Build.Evaluation
         /// </remarks>
         /// <param name="expression">The expression to process.</param>
         /// <param name="i">The start location for skipping whitespace, contains the next non-whitespace character on exit.</param>
-        private static void SinkWhitespace(string expression, ref int i)
+        private static void SinkWhitespace(ReadOnlySpan<char> expression, ref int i)
         {
             while (i < expression.Length && Char.IsWhiteSpace(expression[i]))
             {

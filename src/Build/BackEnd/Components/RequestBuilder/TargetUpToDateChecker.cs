@@ -798,7 +798,7 @@ namespace Microsoft.Build.BackEnd
             // 1. A discrete item. e.g. foo.cs
             // 2. An item vector.  e.g. @(Foo)
             // 3. An item vector transform. e.g. @(Foo->'%(Filename).obj')
-            foreach (string item in items)
+            foreach (var  item in items)
             {
                 // Expand the items in the item expression.  Note that the items returned will have the same type as the original expression
                 // specified.  For example, both @(Foo) and @(Foo->'%(Filename).obj) will return items of type 'Foo'.  If the item in question
@@ -808,7 +808,7 @@ namespace Microsoft.Build.BackEnd
                     _project /* no item type specified; use item type of vector itself */);
 
                 bool isTransformExpression;
-                IList<ProjectItemInstance> itemVectorContents = bucket.Expander.ExpandSingleItemVectorExpressionIntoItems(item, itemFactory, ExpanderOptions.ExpandItems, true /* include null entries from transforms */, out isTransformExpression, elementLocation);
+                IList<ProjectItemInstance> itemVectorContents = bucket.Expander.ExpandSingleItemVectorExpressionIntoItems(item.AsSpan(), itemFactory, ExpanderOptions.ExpandItems, true /* include null entries from transforms */, out isTransformExpression, elementLocation);
 
                 if (itemVectorContents != null)
                 {
@@ -840,8 +840,10 @@ namespace Microsoft.Build.BackEnd
 
                         ItemVectorPartition itemVectorPartition = itemVectorCollection[itemVectorType];
 
-                        ErrorUtilities.VerifyThrow(!itemVectorCollection[itemVectorType].ContainsKey(item), "ItemVectorPartition already contains a vector for items with the expression '{0}'", item);
-                        itemVectorPartition[item] = itemVectorContents;
+                        var itemString = item.ToString();
+
+                        ErrorUtilities.VerifyThrow(!itemVectorCollection[itemVectorType].ContainsKey(itemString), "ItemVectorPartition already contains a vector for items with the expression '{0}'", item);
+                        itemVectorPartition[itemString] = itemVectorContents;
 
                         ErrorUtilities.VerifyThrow((itemVectorTransforms == null) || (itemVectorCollection.Equals(itemVectorTransforms)) || (itemVectorPartition.Count == 1),
                             "If transforms have been separated out, there should only be one item vector per partition.");
@@ -849,8 +851,10 @@ namespace Microsoft.Build.BackEnd
                 }
                 else
                 {
+                    var itemString = item.ToString();
+
                     // There was no item expression
-                    discreteItems[item] = item;
+                    discreteItems[itemString] = itemString;
                 }
             }
         }

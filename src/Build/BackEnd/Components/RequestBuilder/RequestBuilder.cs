@@ -1337,8 +1337,15 @@ namespace Microsoft.Build.BackEnd
             {
                 return null;
             }
-            
-            return new HashSet<string>(ExpressionShredder.SplitSemiColonSeparatedList(warnings), StringComparer.OrdinalIgnoreCase);
+
+            var warningSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var warningSplit in ExpressionShredder.SplitSemiColonSeparatedList(warnings))
+            {
+                warningSet.Add(warningSplit.ToString());
+            }
+
+            return warningSet;
         }
 
         private sealed class DedicatedThreadsTaskScheduler : TaskScheduler

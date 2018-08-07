@@ -99,9 +99,11 @@ namespace Microsoft.Build.Evaluation
 
                 foreach (var splitEscaped in splitsEscaped)
                 {
+                    var splitEscapedSpan = splitEscaped.AsSpan();
+                    string splitEscapedString = null;
+
                     // STEP 3: If expression is "@(x)" copy specified list with its metadata, otherwise just treat as string
-                    bool isItemListExpression;
-                    var itemReferenceFragment = ProcessItemExpression(splitEscaped, itemSpecLocation, projectDirectory, out isItemListExpression);
+                    var itemReferenceFragment = ProcessItemExpression(splitEscapedSpan, ref splitEscapedString, itemSpecLocation, projectDirectory, out var isItemListExpression);
 
                     if (isItemListExpression)
                     {
@@ -111,9 +113,11 @@ namespace Microsoft.Build.Evaluation
                     {
                         // The expression is not of the form "@(X)". Treat as string
 
+                        splitEscapedSpan.MaterializeIfNecessary(ref splitEscapedString);
+
                         //  Code corresponds to EngineFileUtilities.GetFileList
-                        var containsEscapedWildcards = EscapingUtilities.ContainsEscapedWildcards(splitEscaped);
-                        var containsRealWildcards = FileMatcher.HasWildcards(splitEscaped);
+                        var containsEscapedWildcards = EscapingUtilities.ContainsEscapedWildcards(splitEscapedString);
+                        var containsRealWildcards = FileMatcher.HasWildcards(splitEscapedString);
 
                         // '*' is an illegal character to have in a filename.
                         // todo: file-system assumption on legal path characters: https://github.com/Microsoft/msbuild/issues/781
@@ -121,12 +125,12 @@ namespace Microsoft.Build.Evaluation
                         {
 
                             // Just return the original string.
-                            fragments.Add(new ValueFragment(splitEscaped, projectDirectory));
+                            fragments.Add(new ValueFragment(splitEscapedString, projectDirectory));
                         }
                         else if (!containsEscapedWildcards && containsRealWildcards)
                         {
                             // Unescape before handing it to the filesystem.
-                            var filespecUnescaped = EscapingUtilities.UnescapeAll(splitEscaped);
+                            var filespecUnescaped = EscapingUtilities.UnescapeAll(splitEscapedString);
 
                             fragments.Add(new GlobFragment(filespecUnescaped, projectDirectory));
                         }
@@ -136,7 +140,7 @@ namespace Microsoft.Build.Evaluation
                             // escaping ... it should already be escaped appropriately since it came directly
                             // from the project file
 
-                            fragments.Add(new ValueFragment(splitEscaped, projectDirectory));
+                            fragments.Add(new ValueFragment(splitEscapedString, projectDirectory));
                         }
                     }
                 }
@@ -145,7 +149,7 @@ namespace Microsoft.Build.Evaluation
             return fragments;
         }
 
-        private ItemExpressionFragment<P, I> ProcessItemExpression(string expression, IElementLocation elementLocation, string projectDirectory, out bool isItemListExpression)
+        private ItemExpressionFragment<P, I> ProcessItemExpression(ReadOnlySpan<char> expression, ref string expressionString, IElementLocation elementLocation, string projectDirectory, out bool isItemListExpression)
         {
             isItemListExpression = false;
 
@@ -164,7 +168,9 @@ namespace Microsoft.Build.Evaluation
 
             isItemListExpression = true;
 
-            return new ItemExpressionFragment<P, I>(capture, expression, this, projectDirectory);
+            expression.MaterializeIfNecessary(ref expressionString);
+
+            return new ItemExpressionFragment<P, I>(capture, expressionString, this, projectDirectory);
         }
 
         /// <summary>

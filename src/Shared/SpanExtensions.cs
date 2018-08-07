@@ -21,6 +21,11 @@ namespace Microsoft.Build.Shared
             return startIndex + indexInSlice;
         }
 
+        public static void MaterializeIfNecessary(this ReadOnlySpan<char> aSpan, ref string outputString)
+        {
+            outputString = outputString ?? aSpan.ToString();
+        }
+
 #if NETFRAMEWORK || MONO
         //todo remove when full framework will get the StringBuilder span extensions from .net core
         public static void Append(this StringBuilder builder, ReadOnlySpan<char> span)

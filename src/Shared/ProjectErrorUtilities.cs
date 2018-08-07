@@ -221,7 +221,24 @@ namespace Microsoft.Build.Shared
             ReadOnlySpan<char> arg1
             )
         {
-            VerifyThrowInvalidProject(condition, null, elementLocation, resourceName, arg0, arg1);
+            if (!condition)
+            {
+                ThrowInvalidProject(null, elementLocation, resourceName, arg0.ToString(), arg1.ToString());
+            }
+        }
+
+        internal static void VerifyThrowInvalidProjectWithSpan
+            (
+            bool condition,
+            IElementLocation elementLocation,
+            string resourceName,
+            ReadOnlySpan<char> arg0
+            )
+        {
+            if (!condition)
+            {
+                ThrowInvalidProject(null, elementLocation, resourceName, arg0.ToString(), arg0.ToString());
+            }
         }
 
         /// <summary>

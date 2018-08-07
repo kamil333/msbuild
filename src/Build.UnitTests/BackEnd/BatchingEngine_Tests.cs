@@ -96,7 +96,7 @@ namespace Microsoft.Build.UnitTests.BackEnd
                 // This should throw because we don't allow item lists to be concatenated
                 // with other strings.
                 bool throwAway;
-                items = buckets[0].Expander.ExpandSingleItemVectorExpressionIntoItems("@(file)$(unitests)", factory, ExpanderOptions.ExpandItems, false /* no nulls */, out throwAway, MockElementLocation.Instance);
+                items = buckets[0].Expander.ExpandSingleItemVectorExpressionIntoItems("@(file)$(unitests)".AsSpan(), factory, ExpanderOptions.ExpandItems, false /* no nulls */, out throwAway, MockElementLocation.Instance);
             }
             catch (InvalidProjectFileException ex)
             {

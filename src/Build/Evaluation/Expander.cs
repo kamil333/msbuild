@@ -243,7 +243,7 @@ namespace Microsoft.Build.Evaluation
         /// </summary>
         internal static bool ExpressionContainsItemVector(string expression)
         {
-            List<ExpressionShredder.ItemExpressionCapture> transforms = ExpressionShredder.GetReferencedItemExpressions(expression);
+            List<ExpressionShredder.ItemExpressionCapture> transforms = ExpressionShredder.GetReferencedItemExpressions(expression.AsSpan());
 
             return (transforms != null);
         }
@@ -281,7 +281,7 @@ namespace Microsoft.Build.Evaluation
 
             string result = MetadataExpander.ExpandMetadataLeaveEscaped(expression, _metadata, options, elementLocation);
             result = PropertyExpander<P>.ExpandPropertiesLeaveEscaped(result, _properties, options, elementLocation, _usedUninitializedProperties, _fileSystem);
-            result = ItemExpander.ExpandItemVectorsIntoString<I>(this, result, _items, options, elementLocation);
+            result = ItemExpander.ExpandItemVectorsIntoString<I>(this, result.AsSpan(), _items, options, elementLocation);
             result = FileUtilities.MaybeAdjustFilePath(result);
 
             return result;
@@ -360,10 +360,10 @@ namespace Microsoft.Build.Evaluation
             }
 
             var splits = ExpressionShredder.SplitSemiColonSeparatedList(expression);
-            foreach (string split in splits)
+            foreach (var split in splits)
             {
                 bool isTransformExpression;
-                IList<T> itemsToAdd = ItemExpander.ExpandSingleItemVectorExpressionIntoItems<I, T>(this, split, _items, itemFactory, options, false /* do not include null items */, out isTransformExpression, elementLocation);
+                IList<T> itemsToAdd = ItemExpander.ExpandSingleItemVectorExpressionIntoItems<I, T>(this, split.AsSpan(), _items, itemFactory, options, false /* do not include null items */, out isTransformExpression, elementLocation);
 
                 if ((itemsToAdd == null /* broke out early non empty */ || (itemsToAdd.Count > 0)) && (options & ExpanderOptions.BreakOnNotEmpty) != 0)
                 {
@@ -378,7 +378,7 @@ namespace Microsoft.Build.Evaluation
                 {
                     // The expression is not of the form @(itemName).  Therefore, just
                     // treat it as a string, and create a new item from that string.
-                    T itemToAdd = itemFactory.CreateItem(split, elementLocation.File);
+                    T itemToAdd = itemFactory.CreateItem(split.ToString(), elementLocation.File);
 
                     result.Add(itemToAdd);
                 }
@@ -411,7 +411,7 @@ namespace Microsoft.Build.Evaluation
         /// have an item type set on it, it will be given the item type of the item vector to use.
         /// </summary>
         /// <typeparam name="T">Type of the items that should be returned</typeparam>
-        internal IList<T> ExpandSingleItemVectorExpressionIntoItems<T>(string expression, IItemFactory<I, T> itemFactory, ExpanderOptions options, bool includeNullItems, out bool isTransformExpression, IElementLocation elementLocation)
+        internal IList<T> ExpandSingleItemVectorExpressionIntoItems<T>(ReadOnlySpan<char> expression, IItemFactory<I, T> itemFactory, ExpanderOptions options, bool includeNullItems, out bool isTransformExpression, IElementLocation elementLocation)
             where T : class, IItem
         {
             if (expression.Length == 0)
@@ -426,7 +426,7 @@ namespace Microsoft.Build.Evaluation
         }
 
         internal static ExpressionShredder.ItemExpressionCapture ExpandSingleItemVectorExpressionIntoExpressionCapture(
-                string expression, ExpanderOptions options, IElementLocation elementLocation)
+                ReadOnlySpan<char> expression, ExpanderOptions options, IElementLocation elementLocation)
         {
             return ItemExpander.ExpandSingleItemVectorExpressionIntoExpressionCapture(expression, options, elementLocation);
         }
@@ -703,7 +703,7 @@ namespace Microsoft.Build.Evaluation
                     }
                     else
                     {
-                        List<ExpressionShredder.ItemExpressionCapture> itemVectorExpressions = ExpressionShredder.GetReferencedItemExpressions(expression);
+                        List<ExpressionShredder.ItemExpressionCapture> itemVectorExpressions = ExpressionShredder.GetReferencedItemExpressions(expression.AsSpan());
 
                         // The most common case is where the transform is the whole expression
                         // Also if there were no valid item vector expressions found, then go ahead and do the replacement on
@@ -1625,7 +1625,7 @@ namespace Microsoft.Build.Evaluation
             /// <typeparam name="S">Type of the items provided by the item source used for expansion</typeparam>
             /// <typeparam name="T">Type of the items that should be returned</typeparam>
             internal static IList<T> ExpandSingleItemVectorExpressionIntoItems<S, T>(
-                    Expander<P, I> expander, string expression, IItemProvider<S> items, IItemFactory<S, T> itemFactory, ExpanderOptions options,
+                    Expander<P, I> expander, ReadOnlySpan<char> expression, IItemProvider<S> items, IItemFactory<S, T> itemFactory, ExpanderOptions options,
                     bool includeNullEntries, out bool isTransformExpression, IElementLocation elementLocation)
                 where S : class, IItem
                 where T : class, IItem
@@ -1643,7 +1643,7 @@ namespace Microsoft.Build.Evaluation
             }
 
             internal static ExpressionShredder.ItemExpressionCapture ExpandSingleItemVectorExpressionIntoExpressionCapture(
-                    string expression, ExpanderOptions options, IElementLocation elementLocation)
+                    ReadOnlySpan<char> expression, ExpanderOptions options, IElementLocation elementLocation)
             {
                 if (((options & ExpanderOptions.ExpandItems) == 0) || (expression.Length == 0))
                 {
@@ -1652,7 +1652,7 @@ namespace Microsoft.Build.Evaluation
 
                 List<ExpressionShredder.ItemExpressionCapture> matches = null;
 
-                if (s_invariantCompareInfo.IndexOf(expression, '@') == -1)
+                if (expression.IndexOf('@') == -1)
                 {
                     return null;
                 }
@@ -1672,7 +1672,7 @@ namespace Microsoft.Build.Evaluation
                 // If the passed-in expression contains exactly one item list reference,
                 // with nothing else concatenated to the beginning or end, then proceed
                 // with itemizing it, otherwise error.
-                ProjectErrorUtilities.VerifyThrowInvalidProject(match.Value == expression, elementLocation, "EmbeddedItemVectorCannotBeItemized", expression);
+                ProjectErrorUtilities.VerifyThrowInvalidProjectWithSpan(expression.Equals(match.Value.AsSpan(), StringComparison.InvariantCulture), elementLocation, "EmbeddedItemVectorCannotBeItemized", expression);
                 ErrorUtilities.VerifyThrow(matches.Count == 1, "Expected just one item vector");
 
                 return match;
@@ -1872,12 +1872,12 @@ namespace Microsoft.Build.Evaluation
             /// If ExpanderOptions.BreakOnNotEmpty was passed, expression was going to be non-empty, and it broke out early, returns null. Otherwise the result can be trusted.
             /// </summary>
             /// <typeparam name="T">Type of the items provided</typeparam>
-            internal static string ExpandItemVectorsIntoString<T>(Expander<P, I> expander, string expression, IItemProvider<T> items, ExpanderOptions options, IElementLocation elementLocation)
+            internal static string ExpandItemVectorsIntoString<T>(Expander<P, I> expander, ReadOnlySpan<char> expression, IItemProvider<T> items, ExpanderOptions options, IElementLocation elementLocation)
                 where T : class, IItem
             {
                 if (((options & ExpanderOptions.ExpandItems) == 0) || (expression.Length == 0))
                 {
-                    return expression;
+                    return expression.ToString();
                 }
 
                 ErrorUtilities.VerifyThrow(items != null, "Cannot expand items without providing items");
@@ -1886,7 +1886,7 @@ namespace Microsoft.Build.Evaluation
 
                 if (matches == null)
                 {
-                    return expression;
+                    return expression.ToString();
                 }
 
                 using (var builder = new ReuseableStringBuilder())
@@ -1904,7 +1904,7 @@ namespace Microsoft.Build.Evaluation
                                 return null;
                             }
 
-                            builder.Append(expression, lastStringIndex, matches[i].Index - lastStringIndex);
+                            builder.Append(expression.Slice(lastStringIndex, matches[i].Index - lastStringIndex));
                         }
 
                         bool brokeEarlyNonEmpty = ExpandExpressionCaptureIntoStringBuilder(expander, matches[i], items, elementLocation, builder, options);
@@ -1917,7 +1917,7 @@ namespace Microsoft.Build.Evaluation
                         lastStringIndex = matches[i].Index + matches[i].Length;
                     }
 
-                    builder.Append(expression, lastStringIndex, expression.Length - lastStringIndex);
+                    builder.Append(expression.Slice(lastStringIndex, expression.Length - lastStringIndex));
 
                     return OpportunisticIntern.InternableToString(builder);
                 }
@@ -2274,10 +2274,10 @@ namespace Microsoft.Build.Evaluation
                                 {
                                     var splits = ExpressionShredder.SplitSemiColonSeparatedList(metadataValue);
 
-                                    foreach (string itemSpec in splits)
+                                    foreach (var itemSpec in splits)
                                     {
                                         // return a result through the enumerator
-                                        yield return new Pair<string, S>(itemSpec, item.Value);
+                                        yield return new Pair<string, S>(itemSpec.ToString(), item.Value);
                                     }
                                 }
                                 else

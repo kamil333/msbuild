@@ -4,6 +4,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Microsoft.Build.Framework;
 using Microsoft.Build.Evaluation;
@@ -439,7 +440,7 @@ namespace Microsoft.Build.UnitTests.Evaluation
         /// <param name="expected"></param>
         private void VerifySplitSemiColonSeparatedList(string input, params string[] expected)
         {
-            var actual = ExpressionShredder.SplitSemiColonSeparatedList(input);
+            var actual = ExpressionShredder.SplitSemiColonSeparatedList(input).Select(s => s.ToString());
             Console.WriteLine(input);
 
             if (null == expected)
@@ -573,7 +574,7 @@ namespace Microsoft.Build.UnitTests.Evaluation
         public void ExtractItemVectorTransform1()
         {
             string expression = "@(i->'%(Meta0)'->'%(Filename)'->Substring($(Val)))";
-            List<ExpressionShredder.ItemExpressionCapture> expressions = ExpressionShredder.GetReferencedItemExpressions(expression);
+            List<ExpressionShredder.ItemExpressionCapture> expressions = ExpressionShredder.GetReferencedItemExpressions(expression.AsSpan());
 
             ExpressionShredder.ItemExpressionCapture capture = expressions[0];
 
@@ -597,7 +598,7 @@ namespace Microsoft.Build.UnitTests.Evaluation
 
             foreach (string expression in _medleyTests)
             {
-                expressions = ExpressionShredder.GetReferencedItemExpressions(expression);
+                expressions = ExpressionShredder.GetReferencedItemExpressions(expression.AsSpan());
                 MatchCollection matches = s_itemVectorPattern.Matches(expression);
 
                 if (expressions != null)
@@ -640,7 +641,7 @@ namespace Microsoft.Build.UnitTests.Evaluation
             List<ExpressionShredder.ItemExpressionCapture> expressions;
 
             expression = "@(type-&gt;'%($(a)), '%'')";
-            expressions = ExpressionShredder.GetReferencedItemExpressions(expression);
+            expressions = ExpressionShredder.GetReferencedItemExpressions(expression.AsSpan());
             Assert.Null(expressions);
         }
 
@@ -652,7 +653,7 @@ namespace Microsoft.Build.UnitTests.Evaluation
             ExpressionShredder.ItemExpressionCapture capture;
 
             expression = "@(Foo)";
-            expressions = ExpressionShredder.GetReferencedItemExpressions(expression);
+            expressions = ExpressionShredder.GetReferencedItemExpressions(expression.AsSpan());
             capture = expressions[0];
             Assert.Equal(1, expressions.Count);
             Assert.Equal(null, capture.Separator);
@@ -670,7 +671,7 @@ namespace Microsoft.Build.UnitTests.Evaluation
 
 
             expression = "@(Foo, ';')";
-            expressions = ExpressionShredder.GetReferencedItemExpressions(expression);
+            expressions = ExpressionShredder.GetReferencedItemExpressions(expression.AsSpan());
             capture = expressions[0];
             Assert.Equal(1, expressions.Count);
             Assert.Equal(null, capture.Captures);
@@ -688,7 +689,7 @@ namespace Microsoft.Build.UnitTests.Evaluation
 
 
             expression = "@(Foo->'%(Fullpath)')";
-            expressions = ExpressionShredder.GetReferencedItemExpressions(expression);
+            expressions = ExpressionShredder.GetReferencedItemExpressions(expression.AsSpan());
             capture = expressions[0];
             Assert.Equal(1, expressions.Count);
             Assert.Equal(1, capture.Captures.Count);
@@ -706,7 +707,7 @@ namespace Microsoft.Build.UnitTests.Evaluation
             ExpressionShredder.ItemExpressionCapture capture;
 
             expression = "@(Foo->'%(Fullpath)',';')";
-            expressions = ExpressionShredder.GetReferencedItemExpressions(expression);
+            expressions = ExpressionShredder.GetReferencedItemExpressions(expression.AsSpan());
             capture = expressions[0];
             Assert.Equal(1, expressions.Count);
             Assert.Equal(1, capture.Captures.Count);
@@ -725,7 +726,7 @@ namespace Microsoft.Build.UnitTests.Evaluation
 
 
             expression = "@(Foo->Bar(a,b))";
-            expressions = ExpressionShredder.GetReferencedItemExpressions(expression);
+            expressions = ExpressionShredder.GetReferencedItemExpressions(expression.AsSpan());
             capture = expressions[0];
             Assert.Equal(1, expressions.Count);
             Assert.Equal(1, capture.Captures.Count);
@@ -745,7 +746,7 @@ namespace Microsoft.Build.UnitTests.Evaluation
             ExpressionShredder.ItemExpressionCapture capture;
 
             expression = "@(Foo->Bar(a,b),';')";
-            expressions = ExpressionShredder.GetReferencedItemExpressions(expression);
+            expressions = ExpressionShredder.GetReferencedItemExpressions(expression.AsSpan());
             capture = expressions[0];
             Assert.Equal(1, expressions.Count);
             Assert.Equal(1, capture.Captures.Count);
@@ -765,7 +766,7 @@ namespace Microsoft.Build.UnitTests.Evaluation
             ExpressionShredder.ItemExpressionCapture capture;
 
             expression = "@(Foo->Metadata('Meta0')->Directory())";
-            expressions = ExpressionShredder.GetReferencedItemExpressions(expression);
+            expressions = ExpressionShredder.GetReferencedItemExpressions(expression.AsSpan());
             capture = expressions[0];
             Assert.Equal(1, expressions.Count);
             Assert.Equal(2, capture.Captures.Count);
@@ -787,7 +788,7 @@ namespace Microsoft.Build.UnitTests.Evaluation
             ExpressionShredder.ItemExpressionCapture capture;
 
             expression = "@(Foo->Metadata('Meta0')->Directory(),';')";
-            expressions = ExpressionShredder.GetReferencedItemExpressions(expression);
+            expressions = ExpressionShredder.GetReferencedItemExpressions(expression.AsSpan());
             capture = expressions[0];
             Assert.Equal(1, expressions.Count);
             Assert.Equal(2, capture.Captures.Count);
@@ -809,7 +810,7 @@ namespace Microsoft.Build.UnitTests.Evaluation
             ExpressionShredder.ItemExpressionCapture capture;
 
             expression = "@(Foo->'%(Fullpath)'->Directory(), '|')";
-            expressions = ExpressionShredder.GetReferencedItemExpressions(expression);
+            expressions = ExpressionShredder.GetReferencedItemExpressions(expression.AsSpan());
             capture = expressions[0];
             Assert.Equal(1, expressions.Count);
             Assert.Equal(2, capture.Captures.Count);
@@ -831,7 +832,7 @@ namespace Microsoft.Build.UnitTests.Evaluation
             ExpressionShredder.ItemExpressionCapture capture;
 
             expression = "@(Foo->'%(Fullpath)'->Directory(),';')";
-            expressions = ExpressionShredder.GetReferencedItemExpressions(expression);
+            expressions = ExpressionShredder.GetReferencedItemExpressions(expression.AsSpan());
             capture = expressions[0];
             Assert.Equal(1, expressions.Count);
             Assert.Equal(2, capture.Captures.Count);
@@ -853,7 +854,7 @@ namespace Microsoft.Build.UnitTests.Evaluation
             ExpressionShredder.ItemExpressionCapture capture;
 
             expression = "@(Foo->'$(SOMEPROP)%(Fullpath)')";
-            expressions = ExpressionShredder.GetReferencedItemExpressions(expression);
+            expressions = ExpressionShredder.GetReferencedItemExpressions(expression.AsSpan());
             capture = expressions[0];
             Assert.Equal(1, expressions.Count);
             Assert.Equal(1, capture.Captures.Count);
@@ -872,7 +873,7 @@ namespace Microsoft.Build.UnitTests.Evaluation
             ExpressionShredder.ItemExpressionCapture capture;
 
             expression = "@(Foo->'%(Filename)'->Substring($(Val), $(Boo)))";
-            expressions = ExpressionShredder.GetReferencedItemExpressions(expression);
+            expressions = ExpressionShredder.GetReferencedItemExpressions(expression.AsSpan());
             capture = expressions[0];
             Assert.Equal(1, expressions.Count);
             Assert.Equal(2, capture.Captures.Count);
@@ -894,7 +895,7 @@ namespace Microsoft.Build.UnitTests.Evaluation
             ExpressionShredder.ItemExpressionCapture capture;
 
             expression = "@(Foo->'%(Filename)'->Substring(\"AA\", 'BB', `cc`))";
-            expressions = ExpressionShredder.GetReferencedItemExpressions(expression);
+            expressions = ExpressionShredder.GetReferencedItemExpressions(expression.AsSpan());
             capture = expressions[0];
             Assert.Equal(1, expressions.Count);
             Assert.Equal(2, capture.Captures.Count);
@@ -916,7 +917,7 @@ namespace Microsoft.Build.UnitTests.Evaluation
             ExpressionShredder.ItemExpressionCapture capture;
 
             expression = "@(Foo->'%(Filename)'->Substring('()', $(Boo), ')('))";
-            expressions = ExpressionShredder.GetReferencedItemExpressions(expression);
+            expressions = ExpressionShredder.GetReferencedItemExpressions(expression.AsSpan());
             capture = expressions[0];
             Assert.Equal(1, expressions.Count);
             Assert.Equal(2, capture.Captures.Count);
@@ -938,7 +939,7 @@ namespace Microsoft.Build.UnitTests.Evaluation
             ExpressionShredder.ItemExpressionCapture capture;
 
             expression = "@(Foo->'%(Filename)'->Substring(`()`, $(Boo), \"AA\"))";
-            expressions = ExpressionShredder.GetReferencedItemExpressions(expression);
+            expressions = ExpressionShredder.GetReferencedItemExpressions(expression.AsSpan());
             capture = expressions[0];
             Assert.Equal(1, expressions.Count);
             Assert.Equal(2, capture.Captures.Count);
@@ -960,7 +961,7 @@ namespace Microsoft.Build.UnitTests.Evaluation
             ExpressionShredder.ItemExpressionCapture capture;
 
             expression = "@(Foo->'%(Filename)'->Substring(`()`, $(Boo), \")(\"))";
-            expressions = ExpressionShredder.GetReferencedItemExpressions(expression);
+            expressions = ExpressionShredder.GetReferencedItemExpressions(expression.AsSpan());
             capture = expressions[0];
             Assert.Equal(1, expressions.Count);
             Assert.Equal(2, capture.Captures.Count);
@@ -982,7 +983,7 @@ namespace Microsoft.Build.UnitTests.Evaluation
             ExpressionShredder.ItemExpressionCapture capture;
 
             expression = "@(Foo->'%(Filename)'->Substring(\"()\", $(Boo), `)(`))";
-            expressions = ExpressionShredder.GetReferencedItemExpressions(expression);
+            expressions = ExpressionShredder.GetReferencedItemExpressions(expression.AsSpan());
             capture = expressions[0];
             Assert.Equal(1, expressions.Count);
             Assert.Equal(2, capture.Captures.Count);
@@ -1004,7 +1005,7 @@ namespace Microsoft.Build.UnitTests.Evaluation
             ExpressionShredder.ItemExpressionCapture capture;
 
             expression = "@(Bar);@(Foo->'%(Filename)'->Substring(\"()\", $(Boo), `)(`))";
-            expressions = ExpressionShredder.GetReferencedItemExpressions(expression);
+            expressions = ExpressionShredder.GetReferencedItemExpressions(expression.AsSpan());
             capture = expressions[1];
             Assert.Equal(2, expressions.Count);
             Assert.Equal("Bar", expressions[0].ItemType);
@@ -1028,7 +1029,7 @@ namespace Microsoft.Build.UnitTests.Evaluation
             ExpressionShredder.ItemExpressionCapture capture;
 
             expression = "@(Foo->'%(Filename)'->Substring(\"()\", $(Boo), `)(`));@(Bar)";
-            expressions = ExpressionShredder.GetReferencedItemExpressions(expression);
+            expressions = ExpressionShredder.GetReferencedItemExpressions(expression.AsSpan());
             capture = expressions[0];
             Assert.Equal(2, expressions.Count);
             Assert.Equal("Bar", expressions[1].ItemType);
@@ -1052,7 +1053,7 @@ namespace Microsoft.Build.UnitTests.Evaluation
             ExpressionShredder.ItemExpressionCapture capture;
 
             expression = "@(Foo->'%(Filename)'->Substring(\"()\", $(Boo), `)(`));AAAAAA;@(Bar)";
-            expressions = ExpressionShredder.GetReferencedItemExpressions(expression);
+            expressions = ExpressionShredder.GetReferencedItemExpressions(expression.AsSpan());
             capture = expressions[0];
             Assert.Equal(2, expressions.Count);
             Assert.Equal("Bar", expressions[1].ItemType);
@@ -1076,7 +1077,7 @@ namespace Microsoft.Build.UnitTests.Evaluation
             ExpressionShredder.ItemExpressionCapture capture;
 
             expression = "@(Foo->'%(Filename)'->Substring(\"()\", $(Boo), `)(\"`));@(;);@(aaa->;b);@(bbb->'d);@(`Foo->'%(Filename)'->Distinct());@(Bar)";
-            expressions = ExpressionShredder.GetReferencedItemExpressions(expression);
+            expressions = ExpressionShredder.GetReferencedItemExpressions(expression.AsSpan());
             capture = expressions[0];
             Assert.Equal(2, expressions.Count);
             Assert.Equal("Bar", expressions[1].ItemType);
@@ -1100,7 +1101,7 @@ namespace Microsoft.Build.UnitTests.Evaluation
             List<ExpressionShredder.ItemExpressionCapture> expressions;
 
             expression = "@(foo);@(foo,'-');@(foo);@(foo,',');@(foo)";
-            expressions = ExpressionShredder.GetReferencedItemExpressions(expression);
+            expressions = ExpressionShredder.GetReferencedItemExpressions(expression.AsSpan());
             Assert.Equal(5, expressions.Count);
             Assert.Equal("foo", expressions[0].ItemType);
             Assert.Equal(null, expressions[0].Separator);

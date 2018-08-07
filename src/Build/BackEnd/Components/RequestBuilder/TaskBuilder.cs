@@ -1117,9 +1117,9 @@ namespace Microsoft.Build.BackEnd
                     var outputItemSpecs = bucket.Expander.ExpandIntoStringListLeaveEscaped(taskParameterAttribute, ExpanderOptions.ExpandPropertiesAndMetadata, taskItemInstance.TaskParameterLocation);
                     ProjectItemInstanceFactory itemFactory = new ProjectItemInstanceFactory(_buildRequestEntry.RequestConfiguration.Project, itemName);
 
-                    foreach (string outputItemSpec in outputItemSpecs)
+                    foreach (var outputItemSpec in outputItemSpecs)
                     {
-                        ICollection<ProjectItemInstance> items = bucket.Expander.ExpandIntoItemsLeaveEscaped(outputItemSpec, itemFactory, ExpanderOptions.ExpandItems, taskItemInstance.TaskParameterLocation);
+                        ICollection<ProjectItemInstance> items = bucket.Expander.ExpandIntoItemsLeaveEscaped(outputItemSpec.ToString(), itemFactory, ExpanderOptions.ExpandItems, taskItemInstance.TaskParameterLocation);
 
                         lookup.AddNewItemsOfItemType(itemName, items);
                     }

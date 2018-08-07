@@ -417,7 +417,7 @@ namespace Microsoft.Build.Evaluation
             {
                 var includeSplitsEscaped = ExpressionShredder.SplitSemiColonSeparatedList(evaluatedIncludeEscaped);
 
-                foreach (string includeSplitEscaped in includeSplitsEscaped)
+                foreach (var includeSplitEscaped in includeSplitsEscaped)
                 {
                     // STEP 3: If expression is "@(x)" copy specified list with its metadata, otherwise just treat as string
                     bool throwaway;
@@ -433,14 +433,16 @@ namespace Microsoft.Build.Evaluation
                     }
                     else
                     {
+                        var includeSplitEscapedString = includeSplitEscaped.ToString();
+
                         // The expression is not of the form "@(X)". Treat as string
-                        string[] includeSplitFilesEscaped = EngineFileUtilities.Default.GetFileListEscaped(rootDirectory, includeSplitEscaped);
+                        string[] includeSplitFilesEscaped = EngineFileUtilities.Default.GetFileListEscaped(rootDirectory, includeSplitEscapedString);
 
                         if (includeSplitFilesEscaped.Length > 0)
                         {
                             foreach (string includeSplitFileEscaped in includeSplitFilesEscaped)
                             {
-                                items.Add(itemFactory.CreateItem(includeSplitFileEscaped, includeSplitEscaped, itemElement.ContainingProject.FullPath));
+                                items.Add(itemFactory.CreateItem(includeSplitFileEscaped, includeSplitEscapedString, itemElement.ContainingProject.FullPath));
                             }
                         }
                     }
@@ -918,15 +920,18 @@ namespace Microsoft.Build.Evaluation
             using (_evaluationProfiler.TrackFile(currentProjectOrImport.FullPath))
             {
                 // We accumulate InitialTargets from the project and each import
-                var initialTargets = _expander.ExpandIntoStringListLeaveEscaped(currentProjectOrImport.InitialTargets, ExpanderOptions.ExpandProperties, currentProjectOrImport.InitialTargetsLocation);
-                _initialTargetsList.AddRange(initialTargets);
+                foreach (var initialTarget in _expander.ExpandIntoStringListLeaveEscaped(currentProjectOrImport.InitialTargets, ExpanderOptions.ExpandProperties, currentProjectOrImport.InitialTargetsLocation))
+                {
+                    _initialTargetsList.Add(initialTarget.ToString());
+                }
 
                 if (!Traits.Instance.EscapeHatches.IgnoreTreatAsLocalProperty)
                 {
-                    foreach (string propertyName in _expander.ExpandIntoStringListLeaveEscaped(currentProjectOrImport.TreatAsLocalProperty, ExpanderOptions.ExpandProperties, currentProjectOrImport.TreatAsLocalPropertyLocation))
+                    foreach (var propertyName in _expander.ExpandIntoStringListLeaveEscaped(currentProjectOrImport.TreatAsLocalProperty, ExpanderOptions.ExpandProperties, currentProjectOrImport.TreatAsLocalPropertyLocation))
                     {
-                        XmlUtilities.VerifyThrowProjectValidElementName(propertyName, currentProjectOrImport.Location);
-                        _data.GlobalPropertiesToTreatAsLocal.Add(propertyName);
+                        var propertyNameString = propertyName.ToString();
+                        XmlUtilities.VerifyThrowProjectValidElementName(propertyNameString, currentProjectOrImport.Location);
+                        _data.GlobalPropertiesToTreatAsLocal.Add(propertyNameString);
                     }
                 }
 
@@ -1195,7 +1200,7 @@ namespace Microsoft.Build.Evaluation
             var beforeTargets = _expander.ExpandIntoStringListLeaveEscaped(targetElement.BeforeTargets, ExpanderOptions.ExpandPropertiesAndItems, targetElement.BeforeTargetsLocation);
             var afterTargets = _expander.ExpandIntoStringListLeaveEscaped(targetElement.AfterTargets, ExpanderOptions.ExpandPropertiesAndItems, targetElement.AfterTargetsLocation);
 
-            foreach (string beforeTarget in beforeTargets)
+            foreach (var beforeTarget in beforeTargets)
             {
                 string unescapedBeforeTarget = EscapingUtilities.UnescapeAll(beforeTarget);
 
@@ -1218,7 +1223,7 @@ namespace Microsoft.Build.Evaluation
                 }
             }
 
-            foreach (string afterTarget in afterTargets)
+            foreach (var afterTarget in afterTargets)
             {
                 string unescapedAfterTarget = EscapingUtilities.UnescapeAll(afterTarget);
 
@@ -1547,7 +1552,7 @@ namespace Microsoft.Build.Evaluation
                         (
                             _expander.ExpandIntoStringLeaveEscaped(itemElement.Update, ExpanderOptions.ExpandPropertiesAndItems, itemElement.Location)
                         )
-                        .SelectMany(i => _evaluationContext.EngineFileUtilities.GetFileListEscaped(_projectRootElement.DirectoryPath, i))
+                        .SelectMany(i => _evaluationContext.EngineFileUtilities.GetFileListEscaped(_projectRootElement.DirectoryPath, i.ToString()))
                         .Select(EscapingUtilities.UnescapeAll));
 
             var itemsToUpdate = _data.GetItems(itemElement.ItemType).Where(i => expandedItemSet.Contains(i.EvaluatedInclude)).ToList();
@@ -1576,9 +1581,9 @@ namespace Microsoft.Build.Evaluation
 
                     HashSet<string> excludes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-                    foreach (string excludeSplit in excludeSplits)
+                    foreach (var excludeSplit in excludeSplits)
                     {
-                        string[] excludeSplitFiles = _evaluationContext.EngineFileUtilities.GetFileListEscaped(_projectRootElement.DirectoryPath, excludeSplit);
+                        string[] excludeSplitFiles = _evaluationContext.EngineFileUtilities.GetFileListEscaped(_projectRootElement.DirectoryPath, excludeSplit.ToString());
 
                         foreach (string excludeSplitFile in excludeSplitFiles)
                         {
@@ -2199,25 +2204,30 @@ namespace Microsoft.Build.Evaluation
             bool atleastOneImportEmpty = false;
             imports = new List<ProjectRootElement>();
 
-            foreach (string importExpressionEscapedItem in ExpressionShredder.SplitSemiColonSeparatedList(importExpressionEscaped))
+            foreach (var importExpressionEscapedItem in ExpressionShredder.SplitSemiColonSeparatedList(importExpressionEscaped))
             {
                 string[] importFilesEscaped = null;
+
+                var importExpressionSpan = importExpressionEscapedItem.AsSpan();
+                string importExpressionString = null;
 
                 try
                 {
                     // Handle the case of an expression expanding to nothing specially;
                     // force an exception here to give a nicer message, that doesn't show the project directory in it.
-                    if (importExpressionEscapedItem.Length == 0 || importExpressionEscapedItem.Trim().Length == 0)
+                    if (importExpressionSpan.Length == 0 || importExpressionSpan.Trim().Length == 0)
                     {
-                        FileUtilities.NormalizePath(EscapingUtilities.UnescapeAll(importExpressionEscapedItem));
+                        FileUtilities.NormalizePath(EscapingUtilities.UnescapeAll(importExpressionSpan));
                     }
 
+                    importExpressionSpan.MaterializeIfNecessary(ref importExpressionString);
+
                     // Expand the wildcards and provide an alphabetical order list of import statements.
-                    importFilesEscaped = _evaluationContext.EngineFileUtilities.GetFileListEscaped(directoryOfImportingFile, importExpressionEscapedItem, forceEvaluate: true);
+                    importFilesEscaped = _evaluationContext.EngineFileUtilities.GetFileListEscaped(directoryOfImportingFile, importExpressionString, forceEvaluate: true);
                 }
                 catch (Exception ex) when (ExceptionHandling.IsIoRelatedException(ex))
                 {
-                    ProjectErrorUtilities.ThrowInvalidProject(importLocationInProject, "InvalidAttributeValueWithException", EscapingUtilities.UnescapeAll(importExpressionEscapedItem), XMakeAttributes.project, XMakeElements.import, ex.Message);
+                    ProjectErrorUtilities.ThrowInvalidProject(importLocationInProject, "InvalidAttributeValueWithException", EscapingUtilities.UnescapeAll(importExpressionSpan), XMakeAttributes.project, XMakeElements.import, ex.Message);
                 }
 
                 if (importFilesEscaped.Length == 0)
@@ -2227,11 +2237,13 @@ namespace Microsoft.Build.Evaluation
 
                     if (_logProjectImportedEvents)
                     {
+                        importExpressionSpan.MaterializeIfNecessary(ref importExpressionString);
+
                         ProjectImportedEventArgs eventArgs = new ProjectImportedEventArgs(
                             importElement.Location.Line,
                             importElement.Location.Column,
-                            ResourceUtilities.GetResourceString("ProjectImportSkippedNoMatches"),
-                            importExpressionEscapedItem,
+                            importExpressionString,
+                            importExpressionSpan.ToString(),
                             importElement.ContainingProject.FullPath,
                             importElement.Location.Line,
                             importElement.Location.Column)
