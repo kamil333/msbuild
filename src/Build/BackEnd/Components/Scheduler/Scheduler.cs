@@ -1582,7 +1582,7 @@ namespace Microsoft.Build.BackEnd
                         abortRequestBatch = true;
                     }
                 }
-                else if(CacheMissEnforcement(nodeForResults, request, responses))
+                else if (EnforceCacheMissInIsolatedProjectBuilds(nodeForResults, request, responses))
                 {
                     // Ensure there is no affinity mismatch between this request and a previous request of the same configuration.
                     NodeAffinity requestAffinity = GetNodeAffinityForRequest(request);
@@ -1730,7 +1730,7 @@ namespace Microsoft.Build.BackEnd
             }
             else
             {
-                CacheMissEnforcement(nodeForResults, request.BuildRequest, responses);
+                EnforceCacheMissInIsolatedProjectBuilds(nodeForResults, request.BuildRequest, responses);
             }
         }
 
@@ -1786,16 +1786,16 @@ namespace Microsoft.Build.BackEnd
             return null;
         }
 
-        private bool CacheMissEnforcement(int nodeForResults, BuildRequest request, List<ScheduleResponse> responses)
+        private bool EnforceCacheMissInIsolatedProjectBuilds(int nodeForResults, BuildRequest request, List<ScheduleResponse> responses)
         {
             var isIsolatedBuild = _componentHost.BuildParameters.IsolateProjects;
 
             // do not check root requests as nothing depends on them
             if (!request.IsRootRequest && isIsolatedBuild)
             {
-                var configCache = (IConfigCache)_componentHost.GetComponent(BuildComponentType.ConfigCache);
+                var configCache = (IConfigCache) _componentHost.GetComponent(BuildComponentType.ConfigCache);
                 var requestConfig = configCache[request.ConfigurationId];
-                
+
                 // Need the parent request. But the parent / child relationship is sometimes formed after the cache is queried, so get creative
                 var parentRequest = _schedulingData.BlockedRequests.FirstOrDefault(r => r.BuildRequest.GlobalRequestId == request.ParentGlobalRequestId);
                 if (parentRequest == null)
@@ -1805,7 +1805,9 @@ namespace Microsoft.Build.BackEnd
                 }
 
                 ErrorUtilities.VerifyThrowInternalNull(parentRequest, nameof(parentRequest));
-                ErrorUtilities.VerifyThrow(configCache.HasConfiguration(parentRequest.BuildRequest.ConfigurationId), "All non root requests should have a parent with a loaded configuration");
+                ErrorUtilities.VerifyThrow(
+                    configCache.HasConfiguration(parentRequest.BuildRequest.ConfigurationId),
+                    "All non root requests should have a parent with a loaded configuration");
 
                 var parentConfig = configCache[parentRequest.BuildRequest.ConfigurationId];
 
@@ -1833,7 +1835,13 @@ namespace Microsoft.Build.BackEnd
                 // Log an error to have something displayed to the user and to avoid having a failed build with 0 errors
                 // todo Search if there's a way to have the error automagically logged in response to the failed build result
                 _componentHost.LoggingService.LogErrorFromText(
-                    new BuildEventContext(request.SubmissionId, 1, BuildEventContext.InvalidProjectInstanceId, BuildEventContext.InvalidProjectContextId, BuildEventContext.InvalidTargetId, BuildEventContext.InvalidTaskId),
+                    new BuildEventContext(
+                        request.SubmissionId,
+                        1,
+                        BuildEventContext.InvalidProjectInstanceId,
+                        BuildEventContext.InvalidProjectContextId,
+                        BuildEventContext.InvalidTargetId,
+                        BuildEventContext.InvalidTaskId),
                     null,
                     null,
                     null,
