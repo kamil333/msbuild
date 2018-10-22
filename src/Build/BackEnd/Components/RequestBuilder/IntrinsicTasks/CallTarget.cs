@@ -55,6 +55,7 @@ namespace Microsoft.Build.BackEnd
         /// task is run its result will be cached in a scope (ProjectFileName, GlobalProperties)[TargetNames]
         /// as a list of build items
         /// </summary>
+        [Obsolete("Not supported")]
         public bool UseResultsCache { get; set; } = false;
 
         #endregion
@@ -111,7 +112,6 @@ namespace Microsoft.Build.BackEnd
                 buildEngine: this.BuildEngine3,
                 log: this.Log,
                 targetOutputs: _targetOutputs,
-                useResultsCache: this.UseResultsCache,
                 unloadProjectsOnCompletion: false,
                 toolsVersion: null,
                 skipNonexistentTargets: false);

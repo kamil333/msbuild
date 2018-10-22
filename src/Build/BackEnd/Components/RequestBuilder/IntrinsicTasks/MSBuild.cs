@@ -152,6 +152,7 @@ namespace Microsoft.Build.BackEnd
         /// task is run its result will be cached in a scope (ProjectFileName, GlobalProperties)[TargetNames]
         /// as a list of build items
         /// </summary>
+        [Obsolete("Not supported")]
         public bool UseResultsCache { get; set; } = true;
 
         /// <summary>
@@ -348,7 +349,6 @@ namespace Microsoft.Build.BackEnd
                                                 BuildEngine3,
                                                 Log,
                                                 _targetOutputs,
-                                                UseResultsCache,
                                                 UnloadProjectsOnCompletion,
                                                 ToolsVersion,
                                                 SkipNonexistentTargets
@@ -419,7 +419,6 @@ namespace Microsoft.Build.BackEnd
                 BuildEngine3,
                 Log,
                 _targetOutputs,
-                UseResultsCache,
                 UnloadProjectsOnCompletion,
                 ToolsVersion,
                 SkipNonexistentTargets
@@ -515,7 +514,6 @@ namespace Microsoft.Build.BackEnd
             IBuildEngine3 buildEngine,
             TaskLoggingHelper log,
             List<ITaskItem> targetOutputs,
-            bool useResultsCache,
             bool unloadProjectsOnCompletion,
             string toolsVersion,
             bool skipNonexistentTargets)

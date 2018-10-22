@@ -131,6 +131,7 @@ namespace Microsoft.Build.Tasks
         /// task is run its result will be cached in a scope (ProjectFileName, GlobalProperties)[TargetNames]
         /// as a list of build items
         /// </summary>
+        [Obsolete("Not supported")]
         public bool UseResultsCache { get; set; } = true;
 
         /// <summary>
@@ -313,7 +314,6 @@ namespace Microsoft.Build.Tasks
                                 BuildEngine3,
                                 Log,
                                 _targetOutputs,
-                                UseResultsCache,
                                 UnloadProjectsOnCompletion,
                                 ToolsVersion
                                 )
@@ -381,7 +381,6 @@ namespace Microsoft.Build.Tasks
                                 BuildEngine3,
                                 Log,
                                 _targetOutputs,
-                                UseResultsCache,
                                 UnloadProjectsOnCompletion,
                                 ToolsVersion
                                 )
@@ -475,7 +474,6 @@ namespace Microsoft.Build.Tasks
             IBuildEngine3 buildEngine,
             TaskLoggingHelper log,
             List<ITaskItem> targetOutputs,
-            bool useResultsCache,
             bool unloadProjectsOnCompletion,
             string toolsVersion
             )

@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using System;
 using System.Collections.Generic;
 using Microsoft.Build.Framework;
 
@@ -49,6 +50,7 @@ namespace Microsoft.Build.Tasks
         /// task is run its result will be cached in a scope (ProjectFileName, GlobalProperties)[TargetNames]
         /// as a list of build items
         /// </summary>
+        [Obsolete("Not supported")]
         public bool UseResultsCache { get; set; } = false;
 
         #endregion
@@ -87,7 +89,6 @@ namespace Microsoft.Build.Tasks
                 BuildEngine3,
                 Log,
                 _targetOutputs,
-                UseResultsCache,
                 false,
                 null            // toolsVersion = null
                 );
