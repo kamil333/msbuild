@@ -1144,6 +1144,11 @@ namespace Microsoft.Build.Shared
             return s.Replace('\\', '/');
         }
 
+        internal static string ToBackwardSlash(this string s)
+        {
+            return s.Replace('/', '\\');
+        }
+
         /// <summary>
         /// Ensure all slashes are the current platform's slash
         /// </summary>

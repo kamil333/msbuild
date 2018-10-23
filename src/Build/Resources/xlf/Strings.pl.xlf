@@ -80,6 +80,14 @@
       LOCALIZATION:  Do not localize the following words: ProjectGraph, ProjectReference, ToolsVersion.
     </note>
       </trans-unit>
+      <trans-unit id="UndeclaredMSBuildTasksNotAllowedInIsolatedGraphBuilds">
+        <source>MSB4254: The MSBuild task is building project(s) {0} which are not specified in the ProjectReference item.</source>
+        <target state="new">MSB4254: The MSBuild task is building project(s) {0} which are not specified in the ProjectReference item.</target>
+        <note>
+      {StrBegin="MSB4254:"}
+      LOCALIZATION: Do not localize the following words: ProjectReference, MSBuild, task.
+    </note>
+      </trans-unit>
       <trans-unit id="WaitingForEndOfBuild">
         <source>The operation cannot be completed because EndBuild has already been called but existing submissions have not yet completed.</source>
         <target state="translated">Nie można zakończyć operacji, ponieważ metoda EndBuild została już wywołana, ale istniejące przesyłania nie zostały jeszcze zakończone.</target>

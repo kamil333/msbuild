@@ -63,6 +63,7 @@ namespace Microsoft.Build.Tasks
         [Microsoft.Build.Framework.OutputAttribute]
         public Microsoft.Build.Framework.ITaskItem[] TargetOutputs { get { throw null; } }
         public string[] Targets { get { throw null; } set { } }
+        [System.ObsoleteAttribute("Not supported")]
         public bool UseResultsCache { get { throw null; } set { } }
         public override bool Execute() { throw null; }
     }
@@ -493,6 +494,7 @@ namespace Microsoft.Build.Tasks
         public string[] Targets { get { throw null; } set { } }
         public string ToolsVersion { get { throw null; } set { } }
         public bool UnloadProjectsOnCompletion { get { throw null; } set { } }
+        [System.ObsoleteAttribute("Not supported")]
         public bool UseResultsCache { get { throw null; } set { } }
         public override bool Execute() { throw null; }
     }

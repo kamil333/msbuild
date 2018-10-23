@@ -4,8 +4,10 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -759,15 +761,38 @@ namespace Microsoft.Build.BackEnd
                     {
                         MSBuild msbuildTask = host.TaskInstance as MSBuild;
                         ErrorUtilities.VerifyThrow(msbuildTask != null, "Unexpected MSBuild internal task.");
-                        _targetBuilderCallback.EnterMSBuildCallbackState();
 
-                        try
+                        var undeclaredProjects = GetUndeclaredProjects(msbuildTask);
+
+                        if (undeclaredProjects.Length != 0)
                         {
-                            taskResult = await msbuildTask.ExecuteInternal();
+                            _continueOnError = ContinueOnError.ErrorAndStop;
+
+                            taskException = new InvalidProjectFileException(
+                                taskHost.ProjectFileOfTaskNode,
+                                taskHost.LineNumberOfTaskNode,
+                                taskHost.ColumnNumberOfTaskNode,
+                                0,
+                                0,
+                                ResourceUtilities.FormatResourceStringIgnoreCodeAndKeyword(
+                                    "UndeclaredMSBuildTasksNotAllowedInIsolatedGraphBuilds",
+                                    string.Join(";", undeclaredProjects.Select(p => $"\"{p}\""))),
+                                null,
+                                null,
+                                null);
                         }
-                        finally
+                        else
                         {
-                            _targetBuilderCallback.ExitMSBuildCallbackState();
+                            _targetBuilderCallback.EnterMSBuildCallbackState();
+
+                            try
+                            {
+                                taskResult = await msbuildTask.ExecuteInternal();
+                            }
+                            finally
+                            {
+                                _targetBuilderCallback.ExitMSBuildCallbackState();
+                            }
                         }
                     }
                     else if (taskType == typeof(CallTarget))
@@ -807,7 +832,7 @@ namespace Microsoft.Build.BackEnd
                 }
                 else
                 {
-                    Type type = taskException.GetType();
+                    var type = taskException.GetType();
 
                     if (type == typeof(LoggerException))
                     {
@@ -960,6 +985,24 @@ namespace Microsoft.Build.BackEnd
             WorkUnitResult result = new WorkUnitResult(resultCode, actionCode, null);
 
             return result;
+        }
+
+        private string[] GetUndeclaredProjects(MSBuild msbuildTask)
+        {
+            if (!_componentHost.BuildParameters.IsolateProjects)
+            {
+                return Array.Empty<string>();
+            }
+
+            var declaredProjects = _taskExecutionHost.ProjectInstance.GetItems(MSBuildConstants.ProjectReferenceItemName)
+                .Select(p => FileUtilities.NormalizePath(p.EvaluatedInclude))
+                .ToHashSet();
+            declaredProjects.Add(_taskExecutionHost.ProjectInstance.FullPath);
+
+            return msbuildTask.Projects
+                .Where(p => !declaredProjects.Contains(FileUtilities.NormalizePath(p.ItemSpec)))
+                .Select(p => p.ItemSpec)
+                .ToArray();
         }
 
         /// <summary>
