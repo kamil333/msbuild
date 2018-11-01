@@ -39,6 +39,8 @@
     <!-- We are pretty much always on a preview SDK. No need to warn about it. -->
     <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
     <VSWhereVersion>2.2.7</VSWhereVersion>
+    <XUnitVersion>2.4.1</XUnitVersion>
+    <!-- <MicrosoftNETTestSdkVersion>15.9.0</MicrosoftNETTestSdkVersion> -->
   </PropertyGroup>
 
 </Project>

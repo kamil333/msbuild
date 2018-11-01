@@ -27,6 +27,10 @@ namespace Xunit.NetCore.Extensions
         public string DisplayName { get { return _testCase.DisplayName; } }
 
         public IMethodInfo Method { get { return _testCase.Method; } }
+        public int Timeout
+        {
+            get { return _testCase.Timeout; }
+        }
 
         public string SkipReason { get { return _skippedReason; } }
 
@@ -47,6 +51,11 @@ namespace Xunit.NetCore.Extensions
             ExceptionAggregator aggregator, CancellationTokenSource cancellationTokenSource)
         {
             return new XunitTestCaseRunner(this, DisplayName, _skippedReason, constructorArguments, TestMethodArguments, messageBus, aggregator, cancellationTokenSource).RunAsync();
+        }
+
+        public Exception InitializationException
+        {
+            get { return _testCase.InitializationException; }
         }
 
         public void Serialize(IXunitSerializationInfo info) { _testCase.Serialize(info); }
