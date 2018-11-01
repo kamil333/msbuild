@@ -11,6 +11,8 @@ using System.Diagnostics;
 using Microsoft.Build.Shared;
 using Microsoft.Build.Exceptions;
 using Microsoft.Build.Execution;
+using Microsoft.Build.Internal;
+using Microsoft.Build.Shared.Debugging;
 
 namespace Microsoft.Build.BackEnd
 {
@@ -137,6 +139,10 @@ namespace Microsoft.Build.BackEnd
             {
                 ErrorUtilities.ThrowInternalError("Node {0} does not have a provider.", node);
             }
+
+            PrintLineDebugger.DefaultWithProcessInfo.Value.Log("PacketSent");
+
+            PacketUtilities.LogPacket(node, packet, "sending");
 
             // Send the data.
             provider.SendData(node, packet);

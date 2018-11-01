@@ -38,9 +38,9 @@ namespace Microsoft.Build.Shared.Debugging
                 Directory.CreateDirectory(logFileRoot);
             }
 
-            public static IdBasedFilesWriter FromArtifactLogDirectory()
+            public static IdBasedFilesWriter FromArtifactLogDirectory(string subdirectory)
             {
-                return new IdBasedFilesWriter(ArtifactsLogDirectory);
+                return new IdBasedFilesWriter(Path.Combine(ArtifactsLogDirectory, subdirectory));
             }
         }
 
@@ -76,9 +76,16 @@ namespace Microsoft.Build.Shared.Debugging
                 var logIndex = executingAssembly.IndexOf(debugbinPart, StringComparison.Ordinal);
 
                 var debugPart = executingAssembly.Substring(0, logIndex + "debug".Length);
-                return logIndex < 0
+
+                var artifactsLogDirectory = logIndex < 0
                     ? null
                     : Path.Combine(debugPart, "log");
+
+                Console.WriteLine($"Executing assembly: {executingAssembly ?? string.Empty}");
+
+                Console.WriteLine($"Log directory: {artifactsLogDirectory ?? string.Empty}");
+
+                return artifactsLogDirectory;
             });
 
         public static string ArtifactsLogDirectory => _artifactsLogs.Value;

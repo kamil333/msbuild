@@ -15,6 +15,10 @@ using Microsoft.Build.Shared;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
+#if !CLR2COMPATIBILITY
+using Microsoft.Build.Shared.Debugging;
+
+#endif
 
 #if !FEATURE_APM
 using System.Threading.Tasks;
@@ -602,6 +606,10 @@ namespace Microsoft.Build.Internal
         /// </summary>
         internal static void Trace(int nodeId, string format, params object[] args)
         {
+#if !CLR2COMPATIBILITY
+            PrintLineDebugger.Create(null, "CommunicationUtilities", true).Log(new []{$"Node {nodeId}", FormatMessage(format, args)});
+#endif
+
             if (s_trace)
             {
                 if (s_debugDumpPath == null)
@@ -630,11 +638,7 @@ namespace Microsoft.Build.Internal
 
                     using (StreamWriter file = FileUtilities.OpenWrite(String.Format(CultureInfo.CurrentCulture, Path.Combine(s_debugDumpPath, fileName), Process.GetCurrentProcess().Id, nodeId), append: true))
                     {
-                        string message = String.Format(CultureInfo.CurrentCulture, format, args);
-                        long now = DateTime.UtcNow.Ticks;
-                        float millisecondsSinceLastLog = (float)(now - s_lastLoggedTicks) / 10000L;
-                        s_lastLoggedTicks = now;
-                        file.WriteLine("{0} (TID {1}) {2,15} +{3,10}ms: {4}", Thread.CurrentThread.Name, Thread.CurrentThread.ManagedThreadId, now, millisecondsSinceLastLog, message);
+                        file.WriteLine(FormatMessage(format, args));
                     }
                 }
                 catch (IOException)
@@ -642,6 +646,23 @@ namespace Microsoft.Build.Internal
                     // Ignore
                 }
             }
+        }
+
+        private static string FormatMessage(string format, object[] args)
+        {
+            string message = String.Format(CultureInfo.CurrentCulture, format, args);
+            long now = DateTime.UtcNow.Ticks;
+            float millisecondsSinceLastLog = (float) (now - s_lastLoggedTicks) / 10000L;
+            s_lastLoggedTicks = now;
+
+            var messageWithContext = string.Format(
+                "{0} (TID {1}) {2,15} +{3,10}ms: {4}",
+                Thread.CurrentThread.Name,
+                Thread.CurrentThread.ManagedThreadId,
+                now,
+                millisecondsSinceLastLog,
+                message);
+            return messageWithContext;
         }
 
         /// <summary>

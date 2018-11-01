@@ -8,6 +8,7 @@ using System.Linq;
 using Microsoft.Build.Execution;
 using Microsoft.Build.Framework;
 using Microsoft.Build.Shared;
+using Microsoft.Build.Shared.Debugging;
 using Microsoft.Build.UnitTests;
 using Shouldly;
 using Xunit;
@@ -76,17 +77,37 @@ namespace Microsoft.Build.Graph.UnitTests
         }
 
         [Theory]
-        [InlineData(BuildResultCode.Success, new string[] { })]
+        //[InlineData(BuildResultCode.Success, new string[] { })]
         [InlineData(BuildResultCode.Success, new[] {"BuildSelf"})]
         public void CacheAndTaskEnforcementShouldAcceptSelfReferences(BuildResultCode expectedBuildResult, string[] targets)
         {
-            AssertBuild(targets,
-                (result, logger) =>
-                {
-                    result.OverallResult.ShouldBe(BuildResultCode.Success);
+            using (var env = TestEnvironment.Create())
+            {
+                env.SetEnvironmentVariable("MSBUILDDEBUGCOMM", "1");
 
-                    logger.Errors.ShouldBeEmpty();
+                env.SetEnvironmentVariable("MSBUILDDEBUGPATH", Path.Combine(PrintLineDebuggerWriters.ArtifactsLogDirectory, "TestResults"));
+
+                var composite = new PrintLineDebuggerWriters.CompositeWriter(new []
+                {
+                    PrintLineDebuggerWriters.StdOutWriter,
+                    PrintLineDebuggerWriters.IdBasedFilesWriter.FromArtifactLogDirectory("TestResults").Writer
                 });
+
+                env.CreatePrintLineDebugger(composite.Writer);
+
+                PrintLineDebugger.DefaultWithProcessInfo.Value.Log("Test_start");
+
+                AssertBuild(
+                    targets,
+                    (result, logger) =>
+                    {
+                        result.OverallResult.ShouldBe(BuildResultCode.Success);
+
+                        logger.Errors.ShouldBeEmpty();
+                    });
+
+                PrintLineDebugger.DefaultWithProcessInfo.Value.Log("Test_end");
+            }
         }
 
         [Fact]
@@ -328,7 +349,8 @@ namespace Microsoft.Build.Graph.UnitTests
                     IsolateProjects = true,
                     Loggers = new ILogger[] {logger},
                     EnableNodeReuse = false,
-                    DisableInProcNode = true
+                    DisableInProcNode = true,
+                    MaxNodeCount = 1
                 };
 
                 var rootRequest = new BuildRequestData(
@@ -366,7 +388,15 @@ namespace Microsoft.Build.Graph.UnitTests
                             .OverallResult.ShouldBe(BuildResultCode.Success);
                     }
 
+                    PrintLineDebugger.DefaultWithProcessInfo.Value.Log("before build");
+
                     var result = buildManager.BuildRequest(rootRequest);
+
+                    _testOutput.WriteLine($"{result.Exception?.Message}\n{result.Exception?.StackTrace}");
+
+                    PrintLineDebugger.DefaultWithProcessInfo.Value.Log($"{result.Exception?.Message}\n{result.Exception?.StackTrace}");
+
+                    PrintLineDebugger.DefaultWithProcessInfo.Value.Log("after build");
 
                     assert(result, logger);
                 }

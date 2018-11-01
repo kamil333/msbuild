@@ -14,7 +14,7 @@ using Microsoft.Build.Collections;
 using Microsoft.Build.Execution;
 using Microsoft.Build.Framework;
 using Microsoft.Build.Shared;
-
+using Microsoft.Build.Shared.Debugging;
 using BuildAbortedException = Microsoft.Build.Exceptions.BuildAbortedException;
 using ILoggingService = Microsoft.Build.BackEnd.Logging.ILoggingService;
 using NodeLoggingContext = Microsoft.Build.BackEnd.Logging.NodeLoggingContext;
@@ -1548,6 +1548,8 @@ namespace Microsoft.Build.BackEnd
             ErrorUtilities.VerifyThrowArgumentNull(blocker, "blocker");
             ErrorUtilities.VerifyThrowArgumentNull(responses, "responses");
 
+            PrintLineDebugger.DefaultWithProcessInfo.Value.Log("");
+
             // The request is waiting on new requests.
             bool abortRequestBatch = false;
             Stack<BuildRequest> requestsToAdd = new Stack<BuildRequest>(blocker.BuildRequests.Length);
@@ -1664,6 +1666,8 @@ namespace Microsoft.Build.BackEnd
                     }
                 }
             }
+
+            PrintLineDebugger.DefaultWithProcessInfo.Value.Log("");
         }
 
         /// <summary>
@@ -1814,6 +1818,8 @@ namespace Microsoft.Build.BackEnd
                 // allow self references (project calling the msbuild task on itself, potentially with different global properties)
                 if (parentConfig.ProjectFullPath.Equals(requestConfig.ProjectFullPath, StringComparison.OrdinalIgnoreCase))
                 {
+                    PrintLineDebugger.DefaultWithProcessInfo.Value.Log("Enforcement passed");
+
                     return true;
                 }
 
@@ -1848,8 +1854,12 @@ namespace Microsoft.Build.BackEnd
                     new BuildEventFileInfo(requestConfig.ProjectFullPath),
                     errorMessage);
 
+                PrintLineDebugger.DefaultWithProcessInfo.Value.Log("Enforcement failed");
+
                 return false;
             }
+
+            PrintLineDebugger.DefaultWithProcessInfo.Value.Log("Enforcement passed");
 
             return true;
         }

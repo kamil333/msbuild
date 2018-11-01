@@ -20,6 +20,7 @@ using Microsoft.Build.Framework;
 using Microsoft.Build.Internal;
 using Microsoft.Build.Logging;
 using Microsoft.Build.Shared;
+using Microsoft.Build.Shared.Debugging;
 using ForwardingLoggerRecord = Microsoft.Build.Logging.ForwardingLoggerRecord;
 using LoggerDescription = Microsoft.Build.Logging.LoggerDescription;
 
@@ -433,6 +434,8 @@ namespace Microsoft.Build.Execution
 
                 _noActiveSubmissionsEvent.Set();
                 _noNodesActiveEvent.Set();
+
+                PrintLineDebugger.DefaultWithProcessInfo.Value.Log("End BeginBuild");
             }
         }
 
@@ -639,6 +642,8 @@ namespace Microsoft.Build.Execution
                 try
                 {
                     ShutdownLoggingService(loggingService);
+
+                    PrintLineDebugger.DefaultWithProcessInfo.Value.Log("End EndBuild");
                 }
                 finally
                 {
@@ -767,6 +772,8 @@ namespace Microsoft.Build.Execution
 
             lock (_syncLock)
             {
+                PrintLineDebugger.DefaultWithProcessInfo.Value.Log("");
+
                 ProjectInstance projectInstance = submission.BuildRequestData.ProjectInstance;
                 if (projectInstance != null)
                 {
@@ -848,6 +855,8 @@ namespace Microsoft.Build.Execution
                         CheckSubmissionCompletenessAndRemove(submission);
                         return;
                     }
+
+                    PrintLineDebugger.DefaultWithProcessInfo.Value.Log("");
 
                     // Submit the build request.
                     _workQueue.Post(() =>
@@ -1008,32 +1017,37 @@ namespace Microsoft.Build.Execution
         {
             lock (_syncLock)
             {
+                PrintLineDebugger.DefaultWithProcessInfo.Value.Log("ProcessPacket");
+
                 if (_shuttingDown && packet.Type != NodePacketType.NodeShutdown)
                 {
                     // Console.WriteLine("Discarding packet {0} from node {1} because we are shutting down.", packet.Type, node);
+                    PrintLineDebugger.DefaultWithProcessInfo.Value.Log(string.Format("Discarding packet {0} from node {1} because we are shutting down.", packet.Type, node));
                     return;
                 }
+
+                PacketUtilities.LogPacket(node, packet, "receiving");
 
                 switch (packet.Type)
                 {
                     case NodePacketType.BuildRequestBlocker:
-                        BuildRequestBlocker blocker = ExpectPacketType<BuildRequestBlocker>(packet, NodePacketType.BuildRequestBlocker);
+                        BuildRequestBlocker blocker = PacketUtilities.ExpectPacketType<BuildRequestBlocker>(packet, NodePacketType.BuildRequestBlocker);
                         HandleNewRequest(node, blocker);
                         break;
 
                     case NodePacketType.BuildRequestConfiguration:
-                        BuildRequestConfiguration requestConfiguration = ExpectPacketType<BuildRequestConfiguration>(packet, NodePacketType.BuildRequestConfiguration);
+                        BuildRequestConfiguration requestConfiguration = PacketUtilities.ExpectPacketType<BuildRequestConfiguration>(packet, NodePacketType.BuildRequestConfiguration);
                         HandleConfigurationRequest(node, requestConfiguration);
                         break;
 
                     case NodePacketType.BuildResult:
-                        BuildResult result = ExpectPacketType<BuildResult>(packet, NodePacketType.BuildResult);
+                        BuildResult result = PacketUtilities.ExpectPacketType<BuildResult>(packet, NodePacketType.BuildResult);
                         HandleResult(node, result);
                         break;
 
                     case NodePacketType.NodeShutdown:
                         // Remove the node from the list of active nodes.  When they are all done, we have shut down fully
-                        NodeShutdown shutdownPacket = ExpectPacketType<NodeShutdown>(packet, NodePacketType.NodeShutdown);
+                        NodeShutdown shutdownPacket = PacketUtilities.ExpectPacketType<NodeShutdown>(packet, NodePacketType.NodeShutdown);
                         HandleNodeShutdown(node, shutdownPacket);
                         break;
 
@@ -1347,6 +1361,8 @@ namespace Microsoft.Build.Execution
                 }
             }
 
+            PrintLineDebugger.DefaultWithProcessInfo.Value.Log("");
+
             IEnumerable<ScheduleResponse> response = _scheduler.ReportRequestBlocked(node, blocker);
             PerformSchedulingActions(response);
         }
@@ -1497,6 +1513,8 @@ namespace Microsoft.Build.Execution
         {
             foreach (ScheduleResponse response in responses)
             {
+                PrintLineDebugger.DefaultWithProcessInfo.Value.Log(response.Action.ToString());
+
                 switch (response.Action)
                 {
                     case ScheduleActionType.NoAction:
@@ -1826,23 +1844,6 @@ namespace Microsoft.Build.Execution
             }
 
             return loggingService;
-        }
-
-        /// <summary>
-        /// Ensures that the packet type matches the expected type
-        /// </summary>
-        /// <typeparam name="I">The instance-type of packet being expected</typeparam>
-        private static I ExpectPacketType<I>(INodePacket packet, NodePacketType expectedType) where I : class, INodePacket
-        {
-            I castPacket = packet as I;
-
-            // PERF: Not using VerifyThrow here to avoid boxing of expectedType.
-            if (castPacket == null)
-            {
-                ErrorUtilities.ThrowInternalError("Incorrect packet type: {0} should have been {1}", packet.Type, expectedType);
-            }
-
-            return castPacket;
         }
 
         /// <summary>

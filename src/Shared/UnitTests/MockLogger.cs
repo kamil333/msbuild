@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Resources;
 using System.Text;
 using Microsoft.Build.Framework;
+using Microsoft.Build.Shared.Debugging;
 using Shouldly;
 using Xunit;
 using Xunit.Abstractions;
@@ -25,7 +26,6 @@ namespace Microsoft.Build.UnitTests
      */
     internal sealed class MockLogger : ILogger
     {
-        #region Properties
 
         private readonly object _lockObj = new object();  // Protects _fullLog, _testOutputHelper, lists, counts
         private StringBuilder _fullLog = new StringBuilder();
@@ -144,10 +144,6 @@ namespace Microsoft.Build.UnitTests
             }
         }
 
-        #endregion
-
-        #region Minimal ILogger implementation
-
         /*
          * Property:    Verbosity
          *
@@ -211,7 +207,6 @@ namespace Microsoft.Build.UnitTests
         {
             // do nothing
         }
-        #endregion
 
         public MockLogger(ITestOutputHelper testOutputHelper = null, bool profileEvaluation = false, bool printEventsToStdout = true)
         {
@@ -252,6 +247,8 @@ namespace Microsoft.Build.UnitTests
                             _fullLog.AppendLine(logMessage);
                             _testOutputHelper?.WriteLine(logMessage);
 
+                            PrintLineDebugger.DefaultWithProcessInfo.Value.Log(logMessage);
+
                             ++WarningCount;
                             Warnings.Add(w);
                         }
@@ -261,6 +258,8 @@ namespace Microsoft.Build.UnitTests
                         string logMessage = $"{e.File}({e.LineNumber},{e.ColumnNumber}): {e.Subcategory} error {e.Code}: {e.Message}";
                         _fullLog.AppendLine(logMessage);
                         _testOutputHelper?.WriteLine(logMessage);
+
+                        PrintLineDebugger.DefaultWithProcessInfo.Value.Log(logMessage);
 
                         ++ErrorCount;
                         Errors.Add(e);
@@ -274,6 +273,8 @@ namespace Microsoft.Build.UnitTests
                         {
                             _fullLog.AppendLine(eventArgs.Message);
                             _testOutputHelper?.WriteLine(eventArgs.Message);
+
+                            PrintLineDebugger.DefaultWithProcessInfo.Value.Log(eventArgs.Message);
                         }
                         break;
                     }

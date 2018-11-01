@@ -75,6 +75,8 @@
     <PackageIconUrl>https://go.microsoft.com/fwlink/?linkid=825694</PackageIconUrl>
 
     <ArtifactsTestResultsDir>$(ArtifactsLogDir)\TestResults\</ArtifactsTestResultsDir>
+
+    <XUnitRunnerAdditionalArguments>$(XUnitRunnerAdditionalArguments) -verbose -diagnostics -internaldiagnostics</XUnitRunnerAdditionalArguments>
   </PropertyGroup>
 
   <PropertyGroup Condition="$(TargetFramework.StartsWith('net4'))">

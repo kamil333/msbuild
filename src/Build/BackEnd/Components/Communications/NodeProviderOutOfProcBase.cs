@@ -18,6 +18,7 @@ using Microsoft.Build.Internal;
 
 using BackendNativeMethods = Microsoft.Build.BackEnd.NativeMethods;
 using System.Threading.Tasks;
+using Microsoft.Build.Shared.Debugging;
 using Microsoft.Build.Shared.FileSystem;
 using Microsoft.Build.Utilities;
 
@@ -366,6 +367,8 @@ namespace Microsoft.Build.BackEnd
                 // TimeoutException -- Couldn't connect, might not be a node.
                 // InvalidOperationException – Couldn’t connect, probably a different build
                 CommunicationsUtilities.Trace("Failed to connect to pipe {0}. {1}", pipeName, e.Message.TrimEnd());
+
+                PrintLineDebugger.DefaultWithProcessInfo.Value.Log($"{e.Message}\n{e.StackTrace}");
 
                 // If we don't close any stream, we might hang up the child
                 if (nodeStream != null)
