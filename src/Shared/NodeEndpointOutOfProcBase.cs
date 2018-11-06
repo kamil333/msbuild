@@ -345,6 +345,10 @@ namespace Microsoft.Build.BackEnd
 #else
                     Task connectionTask = localPipeServer.WaitForConnectionAsync();
 #endif
+                    CommunicationsUtilities.Trace("Working Directory: [{0}]", Directory.GetCurrentDirectory());
+                    CommunicationsUtilities.Trace("Temp Directory: [{0}]", Path.GetTempPath());
+                    CommunicationsUtilities.PrintDirectory(Path.GetTempPath());
+
                     CommunicationsUtilities.Trace("Waiting for connection {0} ms...", waitTimeRemaining);
 
 #if FEATURE_APM

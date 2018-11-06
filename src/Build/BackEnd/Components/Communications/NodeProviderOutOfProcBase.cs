@@ -95,6 +95,7 @@ namespace Microsoft.Build.BackEnd
             {
                 if (null != nodeContext)
                 {
+                    CommunicationsUtilities.Trace("Attempting to shut down node {0} (PID {1})", nodeContext.NodeId, nodeContext.ProcessId);
                     nodeContext.SendData(new NodeBuildComplete(enableReuse));
                 }
             }
@@ -308,6 +309,10 @@ namespace Microsoft.Build.BackEnd
         {
             // Try and connect to the process.
             string pipeName = "MSBuild" + nodeProcessId;
+
+            CommunicationsUtilities.Trace("Temp Directory: [{0}]", Path.GetTempPath());
+            CommunicationsUtilities.Trace("Working Directory: [{0}]", Directory.GetCurrentDirectory());
+            CommunicationsUtilities.PrintDirectory(Path.GetTempPath());
 
             NamedPipeClientStream nodeStream = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous
 #if FEATURE_PIPEOPTIONS_CURRENTUSERONLY
@@ -578,33 +583,33 @@ namespace Microsoft.Build.BackEnd
             private static bool s_trace = String.Equals(Environment.GetEnvironmentVariable("MSBUILDDEBUGCOMM"), "1", StringComparison.Ordinal);
 
             // The pipe(s) used to communicate with the node.
-            private Stream _clientToServerStream;
-            private Stream _serverToClientStream;
+            private readonly Stream _clientToServerStream;
+            private readonly Stream _serverToClientStream;
 
             /// <summary>
             /// The factory used to create packets from data read off the pipe.
             /// </summary>
-            private INodePacketFactory _packetFactory;
+            private readonly INodePacketFactory _packetFactory;
 
             /// <summary>
             /// The node id assigned by the node provider.
             /// </summary>
-            private int _nodeId;
+            internal int NodeId { get; }
 
             /// <summary>
             /// The process id
             /// </summary>
-            private int _processId;
+            internal int ProcessId { get; }
 
             /// <summary>
             /// An array used to store the header byte for each packet when read.
             /// </summary>
-            private byte[] _headerByte;
+            private readonly byte[] _headerByte;
 
             /// <summary>
             /// A buffer typically big enough to handle a packet body.
             /// </summary>
-            private byte[] _smallReadBuffer;
+            private readonly byte[] _smallReadBuffer;
 
             /// <summary>
             /// Event indicating the node has terminated.
@@ -614,12 +619,12 @@ namespace Microsoft.Build.BackEnd
             /// <summary>
             /// Delegate called when the context terminates.
             /// </summary>
-            private NodeContextTerminateDelegate _terminateDelegate;
+            private readonly NodeContextTerminateDelegate _terminateDelegate;
 
             /// <summary>
             /// Per node read buffers
             /// </summary>
-            private SharedReadBuffer _sharedReadBuffer;
+            private readonly SharedReadBuffer _sharedReadBuffer;
 
             /// <summary>
             /// Constructor.
@@ -628,8 +633,8 @@ namespace Microsoft.Build.BackEnd
                 Stream nodePipe,
                 INodePacketFactory factory, NodeContextTerminateDelegate terminateDelegate)
             {
-                _nodeId = nodeId;
-                _processId = processId;
+                NodeId = nodeId;
+                ProcessId = processId;
                 _clientToServerStream = nodePipe;
                 _serverToClientStream = nodePipe;
                 _packetFactory = factory;
@@ -670,8 +675,8 @@ namespace Microsoft.Build.BackEnd
                     }
                     catch (IOException e)
                     {
-                        CommunicationsUtilities.Trace(_nodeId, "EXCEPTION in RunPacketReadLoopAsync: {0}", e);
-                        _packetFactory.RoutePacket(_nodeId, new NodeShutdown(NodeShutdownReason.ConnectionFailed));
+                        CommunicationsUtilities.Trace(NodeId, "EXCEPTION in RunPacketReadLoopAsync: {0}", e);
+                        _packetFactory.RoutePacket(NodeId, new NodeShutdown(NodeShutdownReason.ConnectionFailed));
                         Close();
                         return;
                     }
@@ -700,8 +705,8 @@ namespace Microsoft.Build.BackEnd
                     }
                     catch (IOException e)
                     {
-                        CommunicationsUtilities.Trace(_nodeId, "EXCEPTION in RunPacketReadLoopAsync (Reading): {0}", e);
-                        _packetFactory.RoutePacket(_nodeId, new NodeShutdown(NodeShutdownReason.ConnectionFailed));
+                        CommunicationsUtilities.Trace(NodeId, "EXCEPTION in RunPacketReadLoopAsync (Reading): {0}", e);
+                        _packetFactory.RoutePacket(NodeId, new NodeShutdown(NodeShutdownReason.ConnectionFailed));
                         Close();
                         return;
                     }
@@ -782,7 +787,7 @@ namespace Microsoft.Build.BackEnd
                 catch (IOException e)
                 {
                     // Do nothing here because any exception will be caught by the async read handler
-                    CommunicationsUtilities.Trace(_nodeId, "EXCEPTION in SendData: {0}", e);
+                    CommunicationsUtilities.Trace(NodeId, "EXCEPTION in SendData: {0}", e);
                 }
                 catch (ObjectDisposedException) // This happens if a child dies unexpectedly
                 {
@@ -800,7 +805,7 @@ namespace Microsoft.Build.BackEnd
                 {
                     _serverToClientStream.Dispose();
                 }
-                _terminateDelegate(_nodeId);
+                _terminateDelegate(NodeId);
             }
 
 #if FEATURE_APM
@@ -824,17 +829,17 @@ namespace Microsoft.Build.BackEnd
             {
                 if (bytesRead != _headerByte.Length)
                 {
-                    CommunicationsUtilities.Trace(_nodeId, "COMMUNICATIONS ERROR (HRC) Node: {0} Process: {1} Bytes Read: {2} Expected: {3}", _nodeId, _processId, bytesRead, _headerByte.Length);
+                    CommunicationsUtilities.Trace(NodeId, "COMMUNICATIONS ERROR (HRC) Node: {0} Process: {1} Bytes Read: {2} Expected: {3}", NodeId, ProcessId, bytesRead, _headerByte.Length);
                     try
                     {
-                        Process childProcess = Process.GetProcessById(_processId);
+                        Process childProcess = Process.GetProcessById(ProcessId);
                         if (childProcess == null || childProcess.HasExited)
                         {
-                            CommunicationsUtilities.Trace(_nodeId, "   Child Process {0} has exited.", _processId);
+                            CommunicationsUtilities.Trace(NodeId, "   Child Process {0} has exited.", ProcessId);
                         }
                         else
                         {
-                            CommunicationsUtilities.Trace(_nodeId, "   Child Process {0} is still running.", _processId);
+                            CommunicationsUtilities.Trace(NodeId, "   Child Process {0} is still running.", ProcessId);
                         }
                     }
                     catch (Exception e)
@@ -844,10 +849,10 @@ namespace Microsoft.Build.BackEnd
                             throw;
                         }
 
-                        CommunicationsUtilities.Trace(_nodeId, "Unable to retrieve remote process information. {0}", e);
+                        CommunicationsUtilities.Trace(NodeId, "Unable to retrieve remote process information. {0}", e);
                     }
 
-                    _packetFactory.RoutePacket(_nodeId, new NodeShutdown(NodeShutdownReason.ConnectionFailed));
+                    _packetFactory.RoutePacket(NodeId, new NodeShutdown(NodeShutdownReason.ConnectionFailed));
                     Close();
                     return false;
                 }
@@ -873,7 +878,7 @@ namespace Microsoft.Build.BackEnd
                     // result, and EndRead will throw on the second one. Pretend the second one never happened.
                     catch (ArgumentException)
                     {
-                        CommunicationsUtilities.Trace(_nodeId, "Hit CLR bug #825607: called back twice on same async result; ignoring");
+                        CommunicationsUtilities.Trace(NodeId, "Hit CLR bug #825607: called back twice on same async result; ignoring");
                         return;
                     }
 
@@ -884,8 +889,8 @@ namespace Microsoft.Build.BackEnd
                 }
                 catch (IOException e)
                 {
-                    CommunicationsUtilities.Trace(_nodeId, "EXCEPTION in HeaderReadComplete: {0}", e);
-                    _packetFactory.RoutePacket(_nodeId, new NodeShutdown(NodeShutdownReason.ConnectionFailed));
+                    CommunicationsUtilities.Trace(NodeId, "EXCEPTION in HeaderReadComplete: {0}", e);
+                    _packetFactory.RoutePacket(NodeId, new NodeShutdown(NodeShutdownReason.ConnectionFailed));
                     Close();
                     return;
                 }
@@ -912,8 +917,8 @@ namespace Microsoft.Build.BackEnd
             {
                 if (bytesRead != packetLength)
                 {
-                    CommunicationsUtilities.Trace(_nodeId, "Bad packet read for packet {0} - Expected {1} bytes, got {2}", packetType, packetLength, bytesRead);
-                    _packetFactory.RoutePacket(_nodeId, new NodeShutdown(NodeShutdownReason.ConnectionFailed));
+                    CommunicationsUtilities.Trace(NodeId, "Bad packet read for packet {0} - Expected {1} bytes, got {2}", packetType, packetLength, bytesRead);
+                    _packetFactory.RoutePacket(NodeId, new NodeShutdown(NodeShutdownReason.ConnectionFailed));
                     Close();
                     return false;
                 }
@@ -929,13 +934,13 @@ namespace Microsoft.Build.BackEnd
                     using (var packetStream = new MemoryStream(packetData, 0, packetLength, /*writeable*/ false, /*bufferIsPubliclyVisible*/ true))
                     {
                         INodePacketTranslator readTranslator = NodePacketTranslator.GetReadTranslator(packetStream, _sharedReadBuffer);
-                        _packetFactory.DeserializeAndRoutePacket(_nodeId, packetType, readTranslator);
+                        _packetFactory.DeserializeAndRoutePacket(NodeId, packetType, readTranslator);
                     }
                 }
                 catch (IOException e)
                 {
-                    CommunicationsUtilities.Trace(_nodeId, "EXCEPTION in ReadAndRoutPacket: {0}", e);
-                    _packetFactory.RoutePacket(_nodeId, new NodeShutdown(NodeShutdownReason.ConnectionFailed));
+                    CommunicationsUtilities.Trace(NodeId, "EXCEPTION in ReadAndRoutPacket: {0}", e);
+                    _packetFactory.RoutePacket(NodeId, new NodeShutdown(NodeShutdownReason.ConnectionFailed));
                     Close();
                     return false;
                 }
@@ -965,7 +970,7 @@ namespace Microsoft.Build.BackEnd
                     // result, and EndRead will throw on the second one. Pretend the second one never happened.
                     catch (ArgumentException)
                     {
-                        CommunicationsUtilities.Trace(_nodeId, "Hit CLR bug #825607: called back twice on same async result; ignoring");
+                        CommunicationsUtilities.Trace(NodeId, "Hit CLR bug #825607: called back twice on same async result; ignoring");
                         return;
                     }
 
@@ -976,8 +981,8 @@ namespace Microsoft.Build.BackEnd
                 }
                 catch (IOException e)
                 {
-                    CommunicationsUtilities.Trace(_nodeId, "EXCEPTION in BodyReadComplete (Reading): {0}", e);
-                    _packetFactory.RoutePacket(_nodeId, new NodeShutdown(NodeShutdownReason.ConnectionFailed));
+                    CommunicationsUtilities.Trace(NodeId, "EXCEPTION in BodyReadComplete (Reading): {0}", e);
+                    _packetFactory.RoutePacket(NodeId, new NodeShutdown(NodeShutdownReason.ConnectionFailed));
                     Close();
                     return;
                 }

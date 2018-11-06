@@ -648,6 +648,18 @@ namespace Microsoft.Build.Internal
             }
         }
 
+        public static void PrintDirectory(string directory)
+        {
+            var sb = new StringBuilder();
+
+            foreach (var file in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories))
+            {
+                sb.AppendLine($"\t{file}");
+            }
+
+            Trace("{0}:\n{1}", directory, sb.ToString());
+        }
+
         private static string FormatMessage(string format, object[] args)
         {
             string message = String.Format(CultureInfo.CurrentCulture, format, args);

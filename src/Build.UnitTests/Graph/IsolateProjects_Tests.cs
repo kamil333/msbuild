@@ -110,6 +110,44 @@ namespace Microsoft.Build.Graph.UnitTests
             }
         }
 
+        [Fact(Skip = "")]
+        public void Minimal()
+        {
+            using (var env = TestEnvironment.Create())
+            {
+                env.SetEnvironmentVariable("MSBUILDDEBUGCOMM", "1");
+
+                env.SetEnvironmentVariable("MSBUILDDEBUGPATH", Path.Combine(PrintLineDebuggerWriters.ArtifactsLogDirectory, "TestResults"));
+
+                var composite = new PrintLineDebuggerWriters.CompositeWriter(new []
+                {
+                    PrintLineDebuggerWriters.StdOutWriter,
+                    PrintLineDebuggerWriters.IdBasedFilesWriter.FromArtifactLogDirectory("TestResults").Writer
+                });
+
+                env.CreatePrintLineDebugger(composite.Writer);
+
+                PrintLineDebugger.DefaultWithProcessInfo.Value.Log("Test_start");
+
+                AssertBuild(
+                    new[] {"BuildSelf"},
+                    (result, logger) =>
+                    {
+                        result.OverallResult.ShouldBe(BuildResultCode.Success);
+
+                        logger.Errors.ShouldBeEmpty();
+                    },
+                    false,
+                    false,
+                    false,
+                    null,
+                    null,
+                    isolate: false);
+
+                PrintLineDebugger.DefaultWithProcessInfo.Value.Log("Test_end");
+            }
+        }
+
         [Fact]
         public void CacheAndTaskEnforcementShouldAcceptCallTarget()
         {
@@ -314,7 +352,8 @@ namespace Microsoft.Build.Graph.UnitTests
             bool buildUndeclaredReference = false,
             bool addContinueOnError = false,
             Func<string, string> projectReferenceModifier = null,
-            Func<string, string> msbuildOnDeclaredReferenceModifier = null)
+            Func<string, string> msbuildOnDeclaredReferenceModifier = null,
+            bool isolate = true)
         {
             using (var env = TestEnvironment.Create())
             using (var buildManager = new BuildManager())
@@ -347,7 +386,7 @@ namespace Microsoft.Build.Graph.UnitTests
 
                 var buildParameters = new BuildParameters
                 {
-                    IsolateProjects = true,
+                    IsolateProjects = isolate,
                     Loggers = new ILogger[] {logger},
                     EnableNodeReuse = false,
                     DisableInProcNode = true,
