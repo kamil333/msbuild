@@ -323,7 +323,8 @@ namespace Microsoft.Build.Graph.UnitTests
                 {
                     // OSX links /var into /private, which makes Path.GetTempPath() to return "/var..." but Directory.GetCurrentDirectory to return "/private/var..."
                     // this discrepancy fails the msbuild task enforcements due to failed path equality checks
-                    env.SetTempPath(Path.Combine(Directory.GetCurrentDirectory(), Guid.NewGuid().ToString("N")), deleteTempDirectory:true);
+                    // The path cannot be too long otherwise it breaks the max 108 character pipe path length on Unix
+                    env.SetTempPath(Path.Combine("/tmp", Guid.NewGuid().ToString("N")), deleteTempDirectory:true);
                 }
 
                 var projectFile = env.CreateFile().Path;
