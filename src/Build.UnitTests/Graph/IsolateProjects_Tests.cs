@@ -76,10 +76,27 @@ namespace Microsoft.Build.Graph.UnitTests
             _testOutput = testOutput;
         }
 
-        [Theory]
-        //[InlineData(BuildResultCode.Success, new string[] { })]
-        [InlineData(BuildResultCode.Success, new[] {"BuildSelf"})]
-        public void CacheAndTaskEnforcementShouldAcceptSelfReferences(BuildResultCode expectedBuildResult, string[] targets)
+        // [Theory]
+        // //[InlineData(BuildResultCode.Success, new string[] { })]
+        // [InlineData(BuildResultCode.Success, new[] {"BuildSelf"})]
+        // public void CacheAndTaskEnforcementShouldAcceptSelfReferences(BuildResultCode expectedBuildResult, string[] targets)
+        // {
+        
+        //         AssertBuild(
+        //             targets,
+        //             (result, logger) =>
+        //             {
+        //                 result.OverallResult.ShouldBe(BuildResultCode.Success);
+
+        //                 logger.Errors.ShouldBeEmpty();
+        //             });
+
+        //         PrintLineDebugger.DefaultWithProcessInfo.Value.Log("Test_end");
+            
+        // }
+
+       [Fact]
+        public void M1()
         {
             using (var env = TestEnvironment.Create())
             {
@@ -89,48 +106,17 @@ namespace Microsoft.Build.Graph.UnitTests
 
                 var composite = new PrintLineDebuggerWriters.CompositeWriter(new []
                 {
-                    PrintLineDebuggerWriters.StdOutWriter,
-                    PrintLineDebuggerWriters.IdBasedFilesWriter.FromArtifactLogDirectory("TestResults").Writer
+                    // PrintLineDebuggerWriters.StdOutWriter,
+                    //PrintLineDebuggerWriters.IdBasedFilesWriter.FromArtifactLogDirectory("TestResults").Writer
+                    (Action<string, string, IEnumerable<string>>) ((id, callsite, args) => File.Exists(PrintLineDebuggerWriters.SimpleFormat(id, callsite, args)))
                 });
 
                 env.CreatePrintLineDebugger(composite.Writer);
 
-                PrintLineDebugger.DefaultWithProcessInfo.Value.Log("Test_start");
+                PrintLineDebugger.DefaultWithProcessInfo.Value.Log("M1_Start");
 
                 AssertBuild(
-                    targets,
-                    (result, logger) =>
-                    {
-                        result.OverallResult.ShouldBe(BuildResultCode.Success);
-
-                        logger.Errors.ShouldBeEmpty();
-                    });
-
-                PrintLineDebugger.DefaultWithProcessInfo.Value.Log("Test_end");
-            }
-        }
-
-        [Fact(Skip = "")]
-        public void Minimal()
-        {
-            using (var env = TestEnvironment.Create())
-            {
-                env.SetEnvironmentVariable("MSBUILDDEBUGCOMM", "1");
-
-                env.SetEnvironmentVariable("MSBUILDDEBUGPATH", Path.Combine(PrintLineDebuggerWriters.ArtifactsLogDirectory, "TestResults"));
-
-                var composite = new PrintLineDebuggerWriters.CompositeWriter(new []
-                {
-                    PrintLineDebuggerWriters.StdOutWriter,
-                    PrintLineDebuggerWriters.IdBasedFilesWriter.FromArtifactLogDirectory("TestResults").Writer
-                });
-
-                env.CreatePrintLineDebugger(composite.Writer);
-
-                PrintLineDebugger.DefaultWithProcessInfo.Value.Log("Test_start");
-
-                AssertBuild(
-                    new[] {"BuildSelf"},
+                    new[] {"SelfTarget"},
                     (result, logger) =>
                     {
                         result.OverallResult.ShouldBe(BuildResultCode.Success);
@@ -142,207 +128,49 @@ namespace Microsoft.Build.Graph.UnitTests
                     false,
                     null,
                     null,
-                    isolate: false);
+                    disableInprocNode: true);
 
-                PrintLineDebugger.DefaultWithProcessInfo.Value.Log("Test_end");
+                PrintLineDebugger.DefaultWithProcessInfo.Value.Log("M1_end");
             }
         }
 
         [Fact]
-        public void CacheAndTaskEnforcementShouldAcceptCallTarget()
+        public void M2()
         {
-            AssertBuild(new []{"CallTarget"},
-                (result, logger) =>
-                {
-                    result.OverallResult.ShouldBe(BuildResultCode.Success);
-
-                    logger.Errors.ShouldBeEmpty();
-                });
-        }
-
-        [Fact(Skip = "https://github.com/Microsoft/msbuild/issues/3876")]
-        public void CacheEnforcementShouldFailWhenReferenceWasNotPreviouslyBuiltAndOnContinueOnError()
-        {
-            CacheEnforcementShouldFailWhenReferenceWasNotPreviouslyBuilt2(true);
-        }
-
-        [Fact]
-        public void CacheEnforcementShouldFailWhenReferenceWasNotPreviouslyBuiltWithoutContinueOnError()
-        {
-            CacheEnforcementShouldFailWhenReferenceWasNotPreviouslyBuilt2(false);
-        }
-
-        private void CacheEnforcementShouldFailWhenReferenceWasNotPreviouslyBuilt2(bool addContinueOnError)
-        {
-            AssertBuild(
-                new[] {"BuildDeclaredReference"},
-                (result, logger) =>
-                {
-                    result.OverallResult.ShouldBe(BuildResultCode.Failure);
-
-                    logger.ErrorCount.ShouldBe(1);
-
-                    logger.Errors.First()
-                        .Message.ShouldStartWith("MSB4252:");
-                },
-                addContinueOnError: addContinueOnError);
-        }
-
-        [Fact]
-        public void CacheEnforcementShouldAcceptPreviouslyBuiltReferences()
-        {
-            AssertBuild(new []{"BuildDeclaredReference"},
-                (result, logger) =>
-                {
-                    result.OverallResult.ShouldBe(BuildResultCode.Success);
-
-                    logger.Errors.ShouldBeEmpty();
-                },
-                buildDeclaredReference: true);
-        }
-
-        [Theory]
-        [InlineData(false)]
-        [InlineData(true)]
-        public void TaskEnforcementShouldFailOnUndeclaredReference(bool addContinueOnError)
-        {
-            AssertBuild(new[] { "BuildUndeclaredReference" },
-                (result, logger) =>
-                {
-                    result.OverallResult.ShouldBe(BuildResultCode.Failure);
-
-                    logger.ErrorCount.ShouldBe(1);
-
-                    logger.Errors.First().Message.ShouldStartWith("MSB4254:");
-                },
-                addContinueOnError: addContinueOnError);
-        }
-
-        [Fact]
-        public void TaskEnforcementShouldNotAcceptPreviouslyBuiltReferences()
-        {
-            AssertBuild(new[] { "BuildUndeclaredReference" },
-                (result, logger) =>
-                {
-                    result.OverallResult.ShouldBe(BuildResultCode.Failure);
-
-                    logger.ErrorCount.ShouldBe(1);
-
-                    logger.Errors.First().Message.ShouldStartWith("MSB4254:");
-                },
-                buildUndeclaredReference: true);
-        }
-
-        public static IEnumerable<object[]> TaskEnforcementShouldNormalizeFilePathsTestData
-        {
-            get
+            using (var env = TestEnvironment.Create())
             {
-                Func<string, string> preserve = path => path;
+                env.SetEnvironmentVariable("MSBUILDDEBUGCOMM", "1");
 
-                Func<string, string> fullToRelative = path =>
+                env.SetEnvironmentVariable("MSBUILDDEBUGPATH", Path.Combine(PrintLineDebuggerWriters.ArtifactsLogDirectory, "TestResults"));
+
+                var composite = new PrintLineDebuggerWriters.CompositeWriter(new []
                 {
-                    var directory = Path.GetDirectoryName(path);
-                    var file = Path.GetFileName(path);
+                    // PrintLineDebuggerWriters.StdOutWriter,
+                    //PrintLineDebuggerWriters.IdBasedFilesWriter.FromArtifactLogDirectory("TestResults").Writer
+                    (Action<string, string, IEnumerable<string>>) ((id, callsite, args) => File.Exists(PrintLineDebuggerWriters.SimpleFormat(id, callsite, args)))
+                });
 
-                    return Path.Combine("..", directory, file);
-                };
+                env.CreatePrintLineDebugger(composite.Writer);
 
-                Func<string, string> ToForwardSlash = path => path.ToSlash();
+                PrintLineDebugger.DefaultWithProcessInfo.Value.Log("M2_start");
 
-                Func<string, string> ToBackwardSlash = path => path.ToBackwardSlash();
+                AssertBuild(
+                    new[] {"SelfTarget"},
+                    (result, logger) =>
+                    {
+                        result.OverallResult.ShouldBe(BuildResultCode.Success);
 
-                Func<string, string> ToDuplicateSlashes = path => path.Replace("/", "//").Replace(@"\", @"\\");
+                        logger.Errors.ShouldBeEmpty();
+                    },
+                    false,
+                    false,
+                    false,
+                    null,
+                    null,
+                    disableInprocNode: true);
 
-                yield return new object[]
-                {
-                    preserve,
-                    fullToRelative
-                };
-
-                yield return new object[]
-                {
-                    fullToRelative,
-                    preserve
-                };
-
-                yield return new object[]
-                {
-                    preserve,
-                    ToForwardSlash
-                };
-
-                yield return new object[]
-                {
-                    ToForwardSlash,
-                    preserve
-                };
-
-                yield return new object[]
-                {
-                    preserve,
-                    ToBackwardSlash
-                };
-
-                yield return new object[]
-                {
-                    ToBackwardSlash,
-                    preserve
-                };
-
-                yield return new object[]
-                {
-                    preserve,
-                    ToDuplicateSlashes
-                };
-
-                yield return new object[]
-                {
-                    ToDuplicateSlashes,
-                    preserve
-                };
-
-                yield return new object[]
-                {
-                    ToBackwardSlash,
-                    ToDuplicateSlashes
-                };
-
-                yield return new object[]
-                {
-                    ToDuplicateSlashes,
-                    ToForwardSlash
-                };
-
-                yield return new object[]
-                {
-                    ToDuplicateSlashes,
-                    fullToRelative
-                };
-
-                yield return new object[]
-                {
-                    fullToRelative,
-                    ToBackwardSlash
-                };
+                PrintLineDebugger.DefaultWithProcessInfo.Value.Log("M2_end");
             }
-        }
-
-        [Theory]
-        [MemberData(nameof(TaskEnforcementShouldNormalizeFilePathsTestData))]
-        public void TaskEnforcementShouldNormalizeFilePaths(Func<string, string> projectReferenceModifier, Func<string, string> msbuildProjectModifier)
-        {
-            AssertBuild(new []{"BuildDeclaredReference"},
-                (result, logger) =>
-                {
-                    result.OverallResult.ShouldBe(BuildResultCode.Success);
-
-                    logger.Errors.ShouldBeEmpty();
-                },
-                buildDeclaredReference: true,
-                buildUndeclaredReference: false,
-                addContinueOnError: false,
-                projectReferenceModifier,
-                msbuildProjectModifier);
         }
 
         private void AssertBuild(
@@ -353,7 +181,7 @@ namespace Microsoft.Build.Graph.UnitTests
             bool addContinueOnError = false,
             Func<string, string> projectReferenceModifier = null,
             Func<string, string> msbuildOnDeclaredReferenceModifier = null,
-            bool isolate = true)
+            bool disableInprocNode =true)
         {
             using (var env = TestEnvironment.Create())
             using (var buildManager = new BuildManager())
@@ -363,7 +191,13 @@ namespace Microsoft.Build.Graph.UnitTests
                     // OSX links /var into /private, which makes Path.GetTempPath() to return "/var..." but Directory.GetCurrentDirectory to return "/private/var..."
                     // this discrepancy fails the msbuild task enforcements due to failed path equality checks
                     // The path cannot be too long otherwise it breaks the max 108 character pipe path length on Unix
-                    env.SetTempPath(Path.Combine("/tmp", Guid.NewGuid().ToString("N")), deleteTempDirectory:true);
+
+                    var newTemp = Path.Combine("/tmp", Guid.NewGuid().ToString("N"));
+
+                    Directory.CreateDirectory(newTemp);
+
+                    env.SetTempPath(newTemp, deleteTempDirectory:true);
+                    env.SetCurrentDirectory(newTemp);
                 }
 
                 var projectFile = env.CreateFile().Path;
@@ -386,10 +220,10 @@ namespace Microsoft.Build.Graph.UnitTests
 
                 var buildParameters = new BuildParameters
                 {
-                    IsolateProjects = isolate,
+                    IsolateProjects = false,
                     Loggers = new ILogger[] {logger},
                     EnableNodeReuse = false,
-                    DisableInProcNode = true,
+                    DisableInProcNode = disableInprocNode,
                     MaxNodeCount = 1
                 };
 
