@@ -7,6 +7,7 @@ using System.Globalization;
 using System.IO;
 using System.IO.Pipes;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
@@ -97,6 +98,14 @@ namespace Microsoft.Build.BackEnd
                 {
                     CommunicationsUtilities.Trace("Attempting to shut down node {0} (PID {1})", nodeContext.NodeId, nodeContext.ProcessId);
                     nodeContext.SendData(new NodeBuildComplete(enableReuse));
+
+                    Thread.Sleep(1000);
+
+                    foreach (var process in Process.GetProcesses().Where(p => p.Id == nodeContext.ProcessId))
+                    {
+                        CommunicationsUtilities.Trace("Killing node {0} (PID {1})", nodeContext.NodeId, nodeContext.ProcessId);
+                        process.Kill();
+                    }
                 }
             }
         }
@@ -310,15 +319,18 @@ namespace Microsoft.Build.BackEnd
             // Try and connect to the process.
             string pipeName = "MSBuild" + nodeProcessId;
 
+            CommunicationsUtilities.Trace("Pipe Name: [{0}]", pipeName);
             CommunicationsUtilities.Trace("Temp Directory: [{0}]", Path.GetTempPath());
             CommunicationsUtilities.Trace("Working Directory: [{0}]", Directory.GetCurrentDirectory());
-            CommunicationsUtilities.PrintDirectory(Path.GetTempPath());
 
             NamedPipeClientStream nodeStream = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous
 #if FEATURE_PIPEOPTIONS_CURRENTUSERONLY
                                                                          | PipeOptions.CurrentUserOnly
 #endif
                                                                          );
+                                                                         
+            CommunicationsUtilities.PrintDirectory(Path.GetTempPath());
+
             CommunicationsUtilities.Trace("Attempting connect to PID {0} with pipe {1} with timeout {2} ms", nodeProcessId, pipeName, timeout);
 
             try

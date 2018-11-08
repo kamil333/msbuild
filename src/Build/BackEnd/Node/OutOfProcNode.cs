@@ -237,6 +237,8 @@ namespace Microsoft.Build.Execution
             // Console.WriteLine("Run called at {0}", DateTime.Now);
             string pipeName = "MSBuild" + Process.GetCurrentProcess().Id;
 
+            CommunicationsUtilities.Trace("Pipe Name: [{0}]", pipeName);
+
             _nodeEndpoint = new NodeEndpointOutOfProc(pipeName, this, enableReuse);
             _nodeEndpoint.OnLinkStatusChanged += OnLinkStatusChanged;
             _nodeEndpoint.Listen(this);

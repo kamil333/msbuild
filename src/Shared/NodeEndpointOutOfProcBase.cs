@@ -340,13 +340,21 @@ namespace Microsoft.Build.BackEnd
                 try
                 {
                     // Wait for a connection
+
+                    CommunicationsUtilities.Trace("Working Directory: [{0}]", Directory.GetCurrentDirectory());
+                    CommunicationsUtilities.Trace("Temp Directory: [{0}]", Path.GetTempPath());
+
+                    CommunicationsUtilities.Trace("Before async wait call");
+
+                    CommunicationsUtilities.PrintDirectory(Path.GetTempPath());
+
 #if FEATURE_APM
                     IAsyncResult resultForConnection = localPipeServer.BeginWaitForConnection(null, null);
 #else
                     Task connectionTask = localPipeServer.WaitForConnectionAsync();
 #endif
-                    CommunicationsUtilities.Trace("Working Directory: [{0}]", Directory.GetCurrentDirectory());
-                    CommunicationsUtilities.Trace("Temp Directory: [{0}]", Path.GetTempPath());
+                    CommunicationsUtilities.Trace("after async wait call");
+                    
                     CommunicationsUtilities.PrintDirectory(Path.GetTempPath());
 
                     CommunicationsUtilities.Trace("Waiting for connection {0} ms...", waitTimeRemaining);
