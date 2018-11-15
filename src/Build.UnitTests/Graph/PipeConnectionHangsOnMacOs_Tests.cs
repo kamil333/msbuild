@@ -16,7 +16,7 @@ using Xunit.Abstractions;
 
 namespace Microsoft.Build.Graph.UnitTests
 {
-    public class PipeConnectionHangsOnMacOs_Tests
+    public class PipeConnectionHangsOnMacOs_Tests : IDisposable
     {
         private readonly string _project = @"
                 <Project>
@@ -25,27 +25,32 @@ namespace Microsoft.Build.Graph.UnitTests
                 </Project>";
 
         private readonly ITestOutputHelper _testOutput;
+        private TestEnvironment _env;
 
         public PipeConnectionHangsOnMacOs_Tests(ITestOutputHelper testOutput)
         {
             _testOutput = testOutput;
+            _env = TestEnvironment.Create(_testOutput);
+
+            _env.SetEnvironmentVariable("MSBUILDDEBUGCOMM", "1");
+
+            _env.SetEnvironmentVariable("MSBUILDDEBUGPATH", Path.Combine(PrintLineDebuggerWriters.ArtifactsLogDirectory, "TestResults"));
+
+            var composite = new PrintLineDebuggerWriters.CompositeWriter(new []
+            {
+                //PrintLineDebuggerWriters.StdOutWriter,
+                PrintLineDebuggerWriters.IdBasedFilesWriter.FromArtifactLogDirectory("TestResults").Writer,
+
+                // this one causes the logs to be merged with the log of IO tracking tools (e.g. fs_usage)
+                //(Action<string, string, IEnumerable<string>>) ((id, callsite, args) => File.Exists(PrintLineDebuggerWriters.SimpleFormat(id, callsite, args)))
+            });
+
+            _env.CreatePrintLineDebugger(composite.Writer);
         }
 
        [Fact]
         public void M1()
         {
-            using (var env = TestEnvironment.Create())
-            {
-                env.SetEnvironmentVariable("MSBUILDDEBUGCOMM", "1");
-
-                env.SetEnvironmentVariable("MSBUILDDEBUGPATH", Path.Combine(PrintLineDebuggerWriters.ArtifactsLogDirectory, "TestResults"));
-
-                var composite = new PrintLineDebuggerWriters.CompositeWriter(new []
-                {
-                    (Action<string, string, IEnumerable<string>>) ((id, callsite, args) => File.Exists(PrintLineDebuggerWriters.SimpleFormat(id, callsite, args)))
-                });
-
-                env.CreatePrintLineDebugger(composite.Writer);
 
                 PrintLineDebugger.DefaultWithProcessInfo.Value.Log("M1_Start");
 
@@ -60,26 +65,13 @@ namespace Microsoft.Build.Graph.UnitTests
                     disableInprocNode: true);
 
                 PrintLineDebugger.DefaultWithProcessInfo.Value.Log("M1_end");
-            }
+
         }
 
         [Fact]
         public void M2()
         {
-            using (var env = TestEnvironment.Create())
-            {
-                env.SetEnvironmentVariable("MSBUILDDEBUGCOMM", "1");
-
-                env.SetEnvironmentVariable("MSBUILDDEBUGPATH", Path.Combine(PrintLineDebuggerWriters.ArtifactsLogDirectory, "TestResults"));
-
-                var composite = new PrintLineDebuggerWriters.CompositeWriter(new []
-                {
-                    // PrintLineDebuggerWriters.StdOutWriter,
-                    //PrintLineDebuggerWriters.IdBasedFilesWriter.FromArtifactLogDirectory("TestResults").Writer
-                    (Action<string, string, IEnumerable<string>>) ((id, callsite, args) => File.Exists(PrintLineDebuggerWriters.SimpleFormat(id, callsite, args)))
-                });
-
-                env.CreatePrintLineDebugger(composite.Writer);
+            
 
                 PrintLineDebugger.DefaultWithProcessInfo.Value.Log("M2_start");
 
@@ -94,7 +86,6 @@ namespace Microsoft.Build.Graph.UnitTests
                     disableInprocNode: true);
 
                 PrintLineDebugger.DefaultWithProcessInfo.Value.Log("M2_end");
-            }
         }
 
         private void AssertBuild(
@@ -162,6 +153,11 @@ namespace Microsoft.Build.Graph.UnitTests
                     buildManager.EndBuild();
                 }
             }
+        }
+
+        public void Dispose()
+        {
+            _env.Dispose();
         }
     }
 }

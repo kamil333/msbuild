@@ -652,7 +652,7 @@ namespace Microsoft.Build.Internal
         {
             var sb = new StringBuilder();
 
-            foreach (var file in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories))
+            foreach (var file in Directory.GetFiles(directory, "*", SearchOption.AllDirectories))
             {
                 sb.AppendLine($"\t{file}");
             }
