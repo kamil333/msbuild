@@ -19,53 +19,8 @@ namespace Microsoft.Build.Graph.UnitTests
     public class PipeConnectionHangsOnMacOs_Tests
     {
         private readonly string _project = @"
-                <Project DefaultTargets='BuildSelf'>
-
-                    <ItemGroup>
-                        <ProjectReference Include='{0}'/>
-                    </ItemGroup>
-
-                    <Target Name='BuildDeclaredReference'>
-                        <MSBuild
-                            Projects='{1}'
-                            Targets='DeclaredReferenceTarget'
-                            {3}
-                        />
-                    </Target>
-
-                    <Target Name='BuildUndeclaredReference'>
-                        <MSBuild
-                            Projects='{2}'
-                            Targets='UndeclaredReferenceTarget'
-                            {3}
-                        />
-                    </Target>
-
-                    <Target Name='BuildSelf'>
-                        <MSBuild
-                            Projects='$(MSBuildThisFile)'
-                            Targets='SelfTarget'
-                            {3}
-                        />
-                    </Target>
-
-                    <Target Name='CallTarget'>
-                        <CallTarget Targets='SelfTarget'/>  
-                    </Target>
-
+                <Project>
                     <Target Name='SelfTarget'>
-                    </Target>
-                </Project>";
-
-        private readonly string _declaredReference = @"
-                <Project>
-                    <Target Name='DeclaredReferenceTarget'>
-                    </Target>
-                </Project>";
-
-        private readonly string _undeclaredReference = @"
-                <Project>
-                    <Target Name='UndeclaredReferenceTarget'>
                     </Target>
                 </Project>";
 
@@ -102,11 +57,6 @@ namespace Microsoft.Build.Graph.UnitTests
 
                         logger.Errors.ShouldBeEmpty();
                     },
-                    false,
-                    false,
-                    false,
-                    null,
-                    null,
                     disableInprocNode: true);
 
                 PrintLineDebugger.DefaultWithProcessInfo.Value.Log("M1_end");
@@ -141,11 +91,6 @@ namespace Microsoft.Build.Graph.UnitTests
 
                         logger.Errors.ShouldBeEmpty();
                     },
-                    false,
-                    false,
-                    false,
-                    null,
-                    null,
                     disableInprocNode: true);
 
                 PrintLineDebugger.DefaultWithProcessInfo.Value.Log("M2_end");
@@ -155,12 +100,7 @@ namespace Microsoft.Build.Graph.UnitTests
         private void AssertBuild(
             string[] targets,
             Action<BuildResult, MockLogger> assert,
-            bool buildDeclaredReference = false,
-            bool buildUndeclaredReference = false,
-            bool addContinueOnError = false,
-            Func<string, string> projectReferenceModifier = null,
-            Func<string, string> msbuildOnDeclaredReferenceModifier = null,
-            bool disableInprocNode =true)
+            bool disableInprocNode = true)
         {
             using (var env = TestEnvironment.Create())
             using (var buildManager = new BuildManager())
@@ -180,20 +120,8 @@ namespace Microsoft.Build.Graph.UnitTests
                 }
 
                 var projectFile = env.CreateFile().Path;
-                var declaredReferenceFile = env.CreateFile().Path;
-                var undeclaredReferenceFile = env.CreateFile().Path;
 
-                File.WriteAllText(
-                    projectFile,
-                    string.Format(
-                        _project,
-                        projectReferenceModifier?.Invoke(declaredReferenceFile) ?? declaredReferenceFile,
-                        msbuildOnDeclaredReferenceModifier?.Invoke(declaredReferenceFile) ?? declaredReferenceFile,
-                        undeclaredReferenceFile,
-                        addContinueOnError ? "ContinueOnError='WarnAndContinue'" : string.Empty));
-
-                File.WriteAllText(declaredReferenceFile, _declaredReference);
-                File.WriteAllText(undeclaredReferenceFile, _undeclaredReference);
+                File.WriteAllText(projectFile, _project);
 
                 var logger = new MockLogger(_testOutput);
 
@@ -216,30 +144,6 @@ namespace Microsoft.Build.Graph.UnitTests
                 try
                 {
                     buildManager.BeginBuild(buildParameters);
-
-                    if (buildDeclaredReference)
-                    {
-                        buildManager.BuildRequest(
-                            new BuildRequestData(
-                                declaredReferenceFile,
-                                new Dictionary<string, string>(),
-                                MSBuildConstants.CurrentToolsVersion,
-                                new[] {"DeclaredReferenceTarget"},
-                                null))
-                            .OverallResult.ShouldBe(BuildResultCode.Success);
-                    }
-
-                    if (buildUndeclaredReference)
-                    {
-                        buildManager.BuildRequest(
-                            new BuildRequestData(
-                                undeclaredReferenceFile,
-                                new Dictionary<string, string>(),
-                                MSBuildConstants.CurrentToolsVersion,
-                                new[] {"UndeclaredReferenceTarget"},
-                                null))
-                            .OverallResult.ShouldBe(BuildResultCode.Success);
-                    }
 
                     PrintLineDebugger.DefaultWithProcessInfo.Value.Log("before build");
 
