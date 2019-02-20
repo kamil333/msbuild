@@ -286,6 +286,7 @@ namespace Microsoft.Build.Experimental.Graph.UnitTests
                 CreateProjectGraph(
                     _env,
                     edges,
+                    null,
                     CreateProjectFileWrapper)
                     .ProjectNodesTopologicallySorted.ToArray();
 
@@ -331,6 +332,7 @@ namespace Microsoft.Build.Experimental.Graph.UnitTests
                 CreateProjectGraph(
                     _env,
                     new Dictionary<int, int[]> { { 1, new[] { 2, 3 } } },
+                    null,
                     CreateProjectFileWrapper)
                     .ProjectNodesTopologicallySorted.ToArray();
 
