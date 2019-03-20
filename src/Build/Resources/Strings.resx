@@ -1763,6 +1763,12 @@ Utilization:          {0} Average Utilization: {1:###.0}</value>
       LOCALIZATION: {0} is a file path
     </comment>
   </data>
+  <data name="ProjectReferenceDoesNotExist" UESanitized="false" Visibility="Public">
+    <value>Project {0} references nonexistent project {1}</value>
+    <comment>
+      LOCALIZATION: {0} and {1} are file paths
+    </comment>
+  </data>
   <!--
         The engine message bucket is: MSB4001 - MSB4999
 

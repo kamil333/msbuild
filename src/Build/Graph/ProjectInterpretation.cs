@@ -6,6 +6,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using Microsoft.Build.BackEnd;
 using Microsoft.Build.Collections;
@@ -77,6 +78,17 @@ namespace Microsoft.Build.Experimental.Graph
                 }
 
                 var projectReferenceFullPath = projectReference.GetMetadataValue(FullPathMetadataName);
+
+                if (!File.Exists(projectReferenceFullPath))
+                {
+                    throw new InvalidOperationException(
+                        String.Format(
+                            CultureInfo.InvariantCulture,
+                            ResourceUtilities.GetResourceString(
+                                "ProjectReferenceDoesNotExist"),
+                            requesterInstance.FullPath,
+                            projectReferenceFullPath));
+                }
 
                 var referenceGlobalProperties = GetGlobalPropertiesForItem(projectReference, requesterInstance.GlobalPropertiesDictionary, globalPropertiesModifiers);
 
