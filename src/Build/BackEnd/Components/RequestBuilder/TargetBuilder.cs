@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Text;
 using System.Threading;
 using System.Xml;
@@ -321,6 +322,7 @@ namespace Microsoft.Build.BackEnd
         /// </summary>
         async Task<BuildResult[]> IRequestBuilderCallback.BuildProjects(string[] projectFiles, Microsoft.Build.Collections.PropertyDictionary<ProjectPropertyInstance>[] properties, string[] toolsVersions, string[] targets, bool waitForResults, bool skipNonexistentTargets)
         {
+            Debugger.Launch();
             return await _requestBuilderCallback.BuildProjects(projectFiles, properties, toolsVersions, targets, waitForResults, skipNonexistentTargets);
         }
 
