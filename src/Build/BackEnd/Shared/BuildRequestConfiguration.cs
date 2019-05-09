@@ -9,7 +9,11 @@ using Microsoft.Build.Execution;
 using Microsoft.Build.Collections;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
+using System.Threading;
+using Microsoft.Build.Construction;
 using Microsoft.Build.Evaluation;
+using Microsoft.Build.Globbing;
 using Microsoft.Build.Shared.FileSystem;
 
 namespace Microsoft.Build.BackEnd
@@ -709,6 +713,46 @@ namespace Microsoft.Build.BackEnd
 
             return null;
         }
+
+        private Func<string, bool> shouldSkipStaticGraphIsolationOnReference;
+
+        public bool ShouldSkipIsolationConstraintsForReference(string referenceFullPath)
+        {
+            ErrorUtilities.VerifyThrowInternalLength(referenceFullPath, nameof(referenceFullPath));
+            ErrorUtilities.VerifyThrowInternalNull(Project, nameof(Project));
+
+            if (shouldSkipStaticGraphIsolationOnReference == null)
+            {
+                shouldSkipStaticGraphIsolationOnReference = GetReferenceFilter();
+            }
+
+            return shouldSkipStaticGraphIsolationOnReference(referenceFullPath);
+
+            Func<string, bool> GetReferenceFilter()
+            {
+                lock (referenceFullPath)
+                {
+                    if (shouldSkipStaticGraphIsolationOnReference != null)
+                    {
+                        return shouldSkipStaticGraphIsolationOnReference;
+                    }
+
+                    var filterItemSpecString = Project.GetPropertyValue(PropertyNames.ReferencesToSkipGraphIsolationConstraintsOn);
+
+                    if (string.IsNullOrEmpty(filterItemSpecString))
+                    {
+                        return _ => false;
+                    }
+
+                    var glob = new CompositeGlob(
+                        ExpressionShredder.SplitSemiColonSeparatedList(filterItemSpecString)
+                            .Select(s => MSBuildGlob.Parse(s)));
+
+                    return s => glob.IsMatch(s);
+                }
+            }
+        }
+
 
         /// <summary>
         /// This override is used to provide a hash code for storage in dictionaries and the like.

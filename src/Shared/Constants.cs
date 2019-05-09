@@ -78,8 +78,8 @@ namespace Microsoft.Build.Shared
         /// Current version of this MSBuild Engine assembly in the form, e.g, "12.0"
         /// </summary>
         internal const string CurrentProductVersion = "16.0";
-		
-		/// <summary>
+        
+        /// <summary>
         /// Symbol used in ProjectReferenceTarget items to represent default targets
         /// </summary>
         internal const string DefaultTargetsMarker = ".default";
@@ -89,8 +89,8 @@ namespace Microsoft.Build.Shared
         /// with fallback to default targets if the ProjectReference item has no targets specified.
         /// </summary>
         internal const string ProjectReferenceTargetsOrDefaultTargetsMarker = ".projectReferenceTargetsOrDefaultTargets";
-		
-		// One-time allocations to avoid implicit allocations for Split(), Trim().
+        
+        // One-time allocations to avoid implicit allocations for Split(), Trim().
         internal static readonly char[] SemicolonChar = { ';' };
         internal static readonly char[] SpaceChar = { ' ' };
         internal static readonly char[] SingleQuoteChar = { '\'' };
@@ -120,6 +120,7 @@ namespace Microsoft.Build.Shared
 
         internal const string InnerBuildProperty = nameof(InnerBuildProperty);
         internal const string InnerBuildPropertyValues = nameof(InnerBuildPropertyValues);
+        internal const string ReferencesToSkipGraphIsolationConstraintsOn = nameof(ReferencesToSkipGraphIsolationConstraintsOn);
     }
 
     internal static class ItemTypeNames
