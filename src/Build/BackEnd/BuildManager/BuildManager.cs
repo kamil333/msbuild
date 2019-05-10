@@ -363,6 +363,11 @@ namespace Microsoft.Build.Execution
         /// <exception cref="InvalidOperationException">Thrown if a build is already in progress.</exception>
         public void BeginBuild(BuildParameters parameters)
         {
+            if (Environment.GetEnvironmentVariable("DebugBuildManager") == "1")
+            {
+                Debugger.Launch();
+            }
+
             lock (_syncLock)
             {
                 // Check for build in progress.
