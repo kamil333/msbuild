@@ -1017,6 +1017,11 @@ namespace Microsoft.Build.BackEnd
                         undeclaredProjects = new List<string>(projectReferenceItems.Count);
                     }
 
+                    if (new []{"dep12.csproj", "dep2.csproj"}.Any(p => normalizedMSBuildProject.EndsWith(p)))
+                    {
+                        continue;
+                    }
+
                     undeclaredProjects.Add(normalizedMSBuildProject);
                 }
             }

@@ -45,16 +45,27 @@ namespace Microsoft.Build.Graph
         {
             public ConfigurationMetadata ReferenceConfiguration { get; }
             public ProjectItemInstance ProjectReferenceItem { get; }
+            public bool IsInnerBuild { get; }
 
-            public ReferenceInfo(ConfigurationMetadata referenceConfiguration, ProjectItemInstance projectReferenceItem)
+            public ReferenceInfo(ConfigurationMetadata referenceConfiguration, ProjectItemInstance projectReferenceItem, bool isInnerBuild)
             {
                 ReferenceConfiguration = referenceConfiguration;
                 ProjectReferenceItem = projectReferenceItem;
+                IsInnerBuild = isInnerBuild;
             }
         }
 
         public IEnumerable<ReferenceInfo> GetReferences(ProjectInstance requesterInstance)
         {
+            if (requesterInstance.GlobalProperties.ContainsKey(GraphBuilder.BuildProjectReferences)
+                && !(
+                    (requesterInstance.FullPath.EndsWith("root-new-multi.csproj") && requesterInstance.GlobalProperties.ContainsKey("TargetFramework"))
+                ||
+                    (requesterInstance.FullPath.EndsWith("dep12.csproj") && !requesterInstance.GlobalProperties.ContainsKey("TargetFramework"))))
+            {
+                yield break;
+            }
+
             IEnumerable<ProjectItemInstance> projectReferenceItems;
             IEnumerable<GlobalPropertiesModifier> globalPropertiesModifiers = null;
 
@@ -64,7 +75,9 @@ namespace Microsoft.Build.Graph
                     projectReferenceItems = ConstructInnerBuildReferences(requesterInstance);
                     break;
                 case ProjectType.InnerBuild:
-                    globalPropertiesModifiers = ModifierForNonMultitargetingNodes.Add((parts, reference) => parts.AddPropertyToUndefine(GetInnerBuildPropertyName(requesterInstance)));
+                    globalPropertiesModifiers =
+                        ModifierForNonMultitargetingNodes.Add(
+                            (parts, reference) => parts.AddPropertyToUndefine(GetInnerBuildPropertyName(requesterInstance)));
                     projectReferenceItems = requesterInstance.GetItems(ItemTypeNames.ProjectReference);
                     break;
                 case ProjectType.NonMultitargeting:
@@ -77,10 +90,10 @@ namespace Microsoft.Build.Graph
 
             foreach (var projectReferenceItem in projectReferenceItems)
             {
-                if (!String.IsNullOrEmpty(projectReferenceItem.GetMetadataValue(ToolsVersionMetadataName)))
+                if (!string.IsNullOrEmpty(projectReferenceItem.GetMetadataValue(ToolsVersionMetadataName)))
                 {
                     throw new InvalidOperationException(
-                        String.Format(
+                        string.Format(
                             CultureInfo.InvariantCulture,
                             ResourceUtilities.GetResourceString(
                                 "ProjectGraphDoesNotSupportProjectReferenceWithToolset"),
@@ -90,11 +103,18 @@ namespace Microsoft.Build.Graph
 
                 var projectReferenceFullPath = projectReferenceItem.GetMetadataValue(FullPathMetadataName);
 
-                var referenceGlobalProperties = GetGlobalPropertiesForItem(projectReferenceItem, requesterInstance.GlobalPropertiesDictionary, globalPropertiesModifiers);
+                var referenceGlobalProperties = GetGlobalPropertiesForItem(
+                    projectReferenceItem,
+                    requesterInstance.GlobalPropertiesDictionary,
+                    globalPropertiesModifiers);
 
                 var referenceConfig = new ConfigurationMetadata(projectReferenceFullPath, referenceGlobalProperties);
 
-                yield return new ReferenceInfo(referenceConfig, projectReferenceItem);
+                yield return
+                    new ReferenceInfo(
+                        referenceConfig,
+                        projectReferenceItem,
+                        projectReferenceItem.ItemType.Equals(InnerBuildReferenceItemName));
             }
         }
 
@@ -141,7 +161,9 @@ namespace Microsoft.Build.Graph
             {
                 var outerBuild = node.Value.GraphNode;
 
-                if (GetProjectType(outerBuild.ProjectInstance) == ProjectType.OuterBuild && outerBuild.ReferencingProjects.Count != 0)
+                if (GetProjectType(outerBuild.ProjectInstance) == ProjectType.OuterBuild
+                    && outerBuild.ReferencingProjects.Count != 0
+                    )
                 {
                     foreach (var innerBuild in outerBuild.ProjectReferences)
                     {

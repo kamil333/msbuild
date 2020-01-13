@@ -5,6 +5,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -26,6 +27,8 @@ namespace Microsoft.Build.Graph
         /// The thread calling BuildGraph() will act as an implicit worker
         /// </summary>
         private const int ImplicitWorkerCount = 1;
+
+        internal const string BuildProjectReferences = "BuildProjectReferences";
 
         public IReadOnlyCollection<ProjectGraphNode> ProjectNodes { get; private set; }
 
@@ -115,6 +118,57 @@ namespace Microsoft.Build.Graph
             if (_solutionDependencies != null && _solutionDependencies.Count != 0)
             {
                 AddEdgesFromSolution(allParsedProjects, _solutionDependencies, Edges);
+            }
+
+            AddTransitiveReferencesToOuterBuilds(allParsedProjects, Edges);
+        }
+
+        private void AddTransitiveReferencesToOuterBuilds(Dictionary<ConfigurationMetadata, ParsedProject> allParsedProjects, GraphEdges edges)
+        {
+            foreach (
+                var outerBuild in
+                    allParsedProjects.Where(
+                        p =>
+                            !p.Value.GraphNode.ProjectInstance.GlobalProperties.ContainsKey("TargetFramework")
+                            && p.Value.ReferenceInfos.Count > 0))
+            {
+                Trace.Assert(outerBuild.Value.ReferenceInfos.All(r => r.IsInnerBuild));
+
+                foreach (var innerBuild in outerBuild.Value.ReferenceInfos.Select(r => allParsedProjects[r.ReferenceConfiguration]))
+                {
+                    var innerBuildClosure = GetTransitiveClosure(innerBuild.GraphNode);
+
+                    foreach (
+                        var closureNode in
+                            innerBuildClosure.Where(
+                                n =>
+                                    !n.ProjectInstance.GlobalProperties.ContainsKey("TargetFramework")
+                                    && n.ProjectInstance.GlobalProperties.TryGetValue(BuildProjectReferences, out var value)
+                                    && value == "false"))
+                    {
+                        outerBuild.Value.GraphNode.AddProjectReference(
+                            closureNode,
+                            new ProjectItemInstance(
+                                outerBuild.Value.GraphNode.ProjectInstance,
+                                "TransitiveOuterBuildProjectReferences",
+                                closureNode.ProjectInstance.FullPath,
+                                outerBuild.Value.ConfigurationMetadata.ProjectFullPath),
+                            edges);
+                    }
+                }
+            }
+
+            IEnumerable<ProjectGraphNode> GetTransitiveClosure(ProjectGraphNode node)
+            {
+                foreach (var directReference in node.ProjectReferences)
+                {
+                    yield return directReference;
+
+                    foreach (var transitiveNode in GetTransitiveClosure(directReference))
+                    {
+                        yield return transitiveNode;
+                    }
+                }
             }
         }
 
@@ -498,18 +552,41 @@ namespace Microsoft.Build.Graph
 
             foreach (var referenceInfo in _projectInterpretation.GetReferences(parsedProject.ProjectInstance))
             {
-                if (FileUtilities.IsSolutionFilename(referenceInfo.ReferenceConfiguration.ProjectFullPath))
+                string referencePath = referenceInfo.ReferenceConfiguration.ProjectFullPath;
+
+                if (FileUtilities.IsSolutionFilename(referencePath))
                 {
                     throw new InvalidOperationException(ResourceUtilities.FormatResourceStringIgnoreCodeAndKeyword(
                         "StaticGraphDoesNotSupportSlnReferences",
-                        referenceInfo.ReferenceConfiguration.ProjectFullPath,
-                        referenceInfo.ReferenceConfiguration.ProjectFullPath
+                        referencePath,
+                        referencePath
                         ));
                 }
-                
+
                 SubmitProjectForParsing(referenceInfo.ReferenceConfiguration);
 
                 referenceInfos.Add(referenceInfo);
+
+                if (
+                    !parsedProject.ProjectInstance.GlobalProperties.ContainsKey(BuildProjectReferences)
+                        &&
+                        ((new[] {"dep2.csproj"}.Any(p => referencePath.EndsWith(p)) && !referenceInfo.IsInnerBuild)
+                         ||
+                         (new[] {"root-new-multi.csproj"}.Any(p => referencePath.EndsWith(p)) && referenceInfo.IsInnerBuild)))
+                {
+                    var globalProperties = new PropertyDictionary<ProjectPropertyInstance>(referenceInfo.ReferenceConfiguration.GlobalProperties);
+                    globalProperties[BuildProjectReferences] = ProjectPropertyInstance.Create(BuildProjectReferences, "false");
+
+                    var newReferenceInfo =
+                        new ProjectInterpretation.ReferenceInfo(
+                            new ConfigurationMetadata(referencePath, globalProperties),
+                            new ProjectItemInstance(parsedProject.ProjectInstance, "injectedReference", referencePath, parsedProject.ProjectInstance.FullPath), 
+                            globalProperties.Contains("TargetFramework"));
+
+                    SubmitProjectForParsing(newReferenceInfo.ReferenceConfiguration);
+
+                    referenceInfos.Add(newReferenceInfo);
+                }
             }
 
             return referenceInfos;

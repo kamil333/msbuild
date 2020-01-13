@@ -1417,6 +1417,8 @@ namespace Microsoft.Build.Execution
                 var waitHandle = new AutoResetEvent(true);
                 var graphBuildStateLock = new object();
 
+                var dot = projectGraph.ToDot();
+
                 var blockedNodes = new HashSet<ProjectGraphNode>(projectGraph.ProjectNodes);
                 var finishedNodes = new HashSet<ProjectGraphNode>(projectGraph.ProjectNodes.Count);
                 var buildingNodes = new Dictionary<BuildSubmission, ProjectGraphNode>();

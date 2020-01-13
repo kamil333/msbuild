@@ -45,8 +45,16 @@ namespace Microsoft.Build.Graph
         {
             var truncatedProjectFile = FileUtilities.TruncatePathToTrailingSegments(ProjectInstance.FullPath, 2);
 
+            var tf = ProjectInstance.GlobalProperties.ContainsKey("TargetFramework")
+                ? ProjectInstance.GlobalProperties["TargetFramework"]
+                : string.Empty;
+
+            var tfs = ProjectInstance.GlobalProperties.ContainsKey("TargetFrameworks")
+                ? ProjectInstance.GlobalProperties["TargetFrameworks"]
+                : string.Empty;
+
             return
-                $"{truncatedProjectFile}, #GlobalProps={ProjectInstance.GlobalProperties.Count}, #Props={ProjectInstance.Properties.Count}, #Items={ProjectInstance.Items.Count}, #in={ReferencingProjects.Count}, #out={ProjectReferences.Count}";
+                $"{truncatedProjectFile}, #GlobalProps={ProjectInstance.GlobalProperties.Count}, #Props={ProjectInstance.Properties.Count}, #Items={ProjectInstance.Items.Count}, #in={ReferencingProjects.Count}, #out={ProjectReferences.Count}, TF={tf}, TFS={tfs}";
         }
 
         internal void AddProjectReference(ProjectGraphNode reference, ProjectItemInstance projectReferenceItem, GraphBuilder.GraphEdges edges)
