@@ -48,6 +48,9 @@
     <PackageReference Update="xunit.assert" Version="$(XUnitVersion)" />
     <PackageReference Update="xunit.console" Version="$(XUnitVersion)" />
     <PackageReference Update="xunit.core" Version="$(XUnitVersion)" />
+
+    <PackageReference Update="System.Text.Json" Version="4.7.0" />
+    <PackageReference Update="Microsoft.VisualStudioEng.MicroBuild.Core" Version="0.4.1" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(DotNetBuildFromSource)' != 'true'">

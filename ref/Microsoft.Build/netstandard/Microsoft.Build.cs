@@ -2013,3 +2013,296 @@ namespace Microsoft.Build.ObjectModelRemoting
         public string Value { get { throw null; } }
     }
 }
+namespace Microsoft.Build.Prediction
+{
+    public partial interface IProjectGraphPredictor
+    {
+        void PredictInputsAndOutputs(Microsoft.Build.Graph.ProjectGraphNode projectGraphNode, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter);
+    }
+    public partial interface IProjectPredictionCollector
+    {
+        void AddInputDirectory(string path, Microsoft.Build.Execution.ProjectInstance projectInstance, string predictorName);
+        void AddInputFile(string path, Microsoft.Build.Execution.ProjectInstance projectInstance, string predictorName);
+        void AddOutputDirectory(string path, Microsoft.Build.Execution.ProjectInstance projectInstance, string predictorName);
+        void AddOutputFile(string path, Microsoft.Build.Execution.ProjectInstance projectInstance, string predictorName);
+    }
+    public partial interface IProjectPredictor
+    {
+        void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter);
+    }
+    public sealed partial class PredictedItem
+    {
+        public PredictedItem(string path) { }
+        public string Path { get { throw null; } }
+        public System.Collections.Generic.IReadOnlyCollection<string> PredictedBy { get { throw null; } }
+        public override string ToString() { throw null; }
+    }
+    public sealed partial class ProjectGraphPredictionExecutor
+    {
+        public ProjectGraphPredictionExecutor(System.Collections.Generic.IEnumerable<Microsoft.Build.Prediction.IProjectGraphPredictor> projectGraphPredictors, System.Collections.Generic.IEnumerable<Microsoft.Build.Prediction.IProjectPredictor> projectPredictors) { }
+        public ProjectGraphPredictionExecutor(System.Collections.Generic.IEnumerable<Microsoft.Build.Prediction.IProjectGraphPredictor> projectGraphPredictors, System.Collections.Generic.IEnumerable<Microsoft.Build.Prediction.IProjectPredictor> projectPredictors, Microsoft.Build.Prediction.ProjectPredictionOptions options) { }
+        public Microsoft.Build.Prediction.ProjectGraphPredictions PredictInputsAndOutputs(Microsoft.Build.Graph.ProjectGraph projectGraph) { throw null; }
+        public void PredictInputsAndOutputs(Microsoft.Build.Graph.ProjectGraph projectGraph, Microsoft.Build.Prediction.IProjectPredictionCollector projectPredictionCollector) { }
+    }
+    public sealed partial class ProjectGraphPredictions
+    {
+        public ProjectGraphPredictions(System.Collections.Generic.IReadOnlyDictionary<Microsoft.Build.Graph.ProjectGraphNode, Microsoft.Build.Prediction.ProjectPredictions> predictionsPerNode) { }
+        public System.Collections.Generic.IReadOnlyDictionary<Microsoft.Build.Graph.ProjectGraphNode, Microsoft.Build.Prediction.ProjectPredictions> PredictionsPerNode { get { throw null; } }
+    }
+    public sealed partial class ProjectPredictionExecutor
+    {
+        public ProjectPredictionExecutor(System.Collections.Generic.IEnumerable<Microsoft.Build.Prediction.IProjectPredictor> predictors) { }
+        public ProjectPredictionExecutor(System.Collections.Generic.IEnumerable<Microsoft.Build.Prediction.IProjectPredictor> predictors, Microsoft.Build.Prediction.ProjectPredictionOptions options) { }
+        public Microsoft.Build.Prediction.ProjectPredictions PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance) { throw null; }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.IProjectPredictionCollector projectPredictionCollector) { }
+    }
+    public sealed partial class ProjectPredictionOptions
+    {
+        public ProjectPredictionOptions() { }
+        public int MaxDegreeOfParallelism { get { throw null; } set { } }
+    }
+    [System.ObsoleteAttribute("Types with embedded references are not supported in this version of your compiler.", true)]
+    [System.Runtime.CompilerServices.IsByRefLikeAttribute]
+    [System.Runtime.InteropServices.StructLayoutAttribute(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    public partial struct ProjectPredictionReporter
+    {
+        public void ReportInputDirectory(string path) { }
+        public void ReportInputFile(string path) { }
+        public void ReportOutputDirectory(string path) { }
+        public void ReportOutputFile(string path) { }
+    }
+    public sealed partial class ProjectPredictions
+    {
+        public ProjectPredictions(System.Collections.Generic.IReadOnlyCollection<Microsoft.Build.Prediction.PredictedItem> inputFiles, System.Collections.Generic.IReadOnlyCollection<Microsoft.Build.Prediction.PredictedItem> inputDirectories, System.Collections.Generic.IReadOnlyCollection<Microsoft.Build.Prediction.PredictedItem> outputFiles, System.Collections.Generic.IReadOnlyCollection<Microsoft.Build.Prediction.PredictedItem> outputDirectories) { }
+        public System.Collections.Generic.IReadOnlyCollection<Microsoft.Build.Prediction.PredictedItem> InputDirectories { get { throw null; } }
+        public System.Collections.Generic.IReadOnlyCollection<Microsoft.Build.Prediction.PredictedItem> InputFiles { get { throw null; } }
+        public System.Collections.Generic.IReadOnlyCollection<Microsoft.Build.Prediction.PredictedItem> OutputDirectories { get { throw null; } }
+        public System.Collections.Generic.IReadOnlyCollection<Microsoft.Build.Prediction.PredictedItem> OutputFiles { get { throw null; } }
+    }
+    public static partial class ProjectPredictors
+    {
+        public static System.Collections.Generic.IReadOnlyCollection<Microsoft.Build.Prediction.IProjectGraphPredictor> AllProjectGraphPredictors { get { throw null; } }
+        public static System.Collections.Generic.IReadOnlyCollection<Microsoft.Build.Prediction.IProjectPredictor> AllProjectPredictors { get { throw null; } }
+    }
+}
+namespace Microsoft.Build.Prediction.Predictors
+{
+    public partial class AdditionalIncludeDirectoriesPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public AdditionalIncludeDirectoriesPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter reporter) { }
+    }
+    public sealed partial class AnalyzerItemsPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public AnalyzerItemsPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class ApplicationDefinitionItemsPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public ApplicationDefinitionItemsPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class ApplicationIconPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public ApplicationIconPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class ArtifactsSdkPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public ArtifactsSdkPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class AssemblyOriginatorKeyFilePredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public AssemblyOriginatorKeyFilePredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class AvailableItemNameItemsPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public AvailableItemNameItemsPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class AzureCloudServicePipelineTransformPhaseGraphPredictor : Microsoft.Build.Prediction.IProjectGraphPredictor
+    {
+        public AzureCloudServicePipelineTransformPhaseGraphPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Graph.ProjectGraphNode projectGraphNode, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class AzureCloudServicePredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public AzureCloudServicePredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class AzureCloudServiceWorkerFilesPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public AzureCloudServiceWorkerFilesPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class ClIncludeItemsPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public ClIncludeItemsPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class CodeAnalysisRuleSetPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public CodeAnalysisRuleSetPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class CompiledAssemblyPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public CompiledAssemblyPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class CompileItemsPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public CompileItemsPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class ContentItemsPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public ContentItemsPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class DocumentationFilePredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public DocumentationFilePredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class EditorConfigFilesItemsPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public EditorConfigFilesItemsPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class EmbeddedResourceItemsPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public EmbeddedResourceItemsPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class GeneratePackageOnBuildPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public GeneratePackageOnBuildPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class GetCopyToOutputDirectoryItemsGraphPredictor : Microsoft.Build.Prediction.IProjectGraphPredictor
+    {
+        public GetCopyToOutputDirectoryItemsGraphPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Graph.ProjectGraphNode projectGraphNode, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class IntermediateOutputPathPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public IntermediateOutputPathPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class ManifestsPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public ManifestsPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public partial class MasmItemsPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public MasmItemsPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance project, Microsoft.Build.Prediction.ProjectPredictionReporter reporter) { }
+    }
+    public partial class ModuleDefinitionFilePredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public ModuleDefinitionFilePredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter reporter) { }
+    }
+    public sealed partial class NoneItemsPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public NoneItemsPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class OutDirOrOutputPathPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public OutDirOrOutputPathPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class PageItemsPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public PageItemsPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class ProjectFileAndImportsGraphPredictor : Microsoft.Build.Prediction.IProjectGraphPredictor
+    {
+        public ProjectFileAndImportsGraphPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Graph.ProjectGraphNode projectGraphNode, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class ProjectFileAndImportsPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public ProjectFileAndImportsPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class RefAssemblyPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public RefAssemblyPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class ReferenceItemsPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public ReferenceItemsPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class ResourceItemsPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public ResourceItemsPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class ServiceFabricPackageRootFilesGraphPredictor : Microsoft.Build.Prediction.IProjectGraphPredictor
+    {
+        public ServiceFabricPackageRootFilesGraphPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Graph.ProjectGraphNode projectGraphNode, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class ServiceFabricServiceManifestPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public ServiceFabricServiceManifestPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class SplashScreenItemsPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public SplashScreenItemsPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class SqlBuildPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public SqlBuildPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class StyleCopPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public StyleCopPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class SymbolsFilePredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public SymbolsFilePredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class TsConfigPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public TsConfigPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class TypeScriptCompileItemsPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public TypeScriptCompileItemsPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class VSCTCompileItemsPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public VSCTCompileItemsPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+    public sealed partial class XamlAppDefPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public XamlAppDefPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+}
+namespace Microsoft.Build.Prediction.Predictors.CopyTask
+{
+    public sealed partial class CopyTaskPredictor : Microsoft.Build.Prediction.IProjectPredictor
+    {
+        public CopyTaskPredictor() { }
+        public void PredictInputsAndOutputs(Microsoft.Build.Execution.ProjectInstance projectInstance, Microsoft.Build.Prediction.ProjectPredictionReporter predictionReporter) { }
+    }
+}

@@ -458,7 +458,7 @@ namespace Microsoft.Build.Graph
                 projectInstance.GetPropertyValue(AddTransitiveProjectReferencesInStaticGraphPropertyName));
         }
 
-        private static bool MSBuildStringIsTrue(string msbuildString) =>
+        internal static bool MSBuildStringIsTrue(string msbuildString) =>
             ConversionUtilities.ConvertStringToBool(msbuildString, nullOrWhitespaceIsFalse: true);
 
         private static bool MSBuildStringIsFalse(string msbuildString) => !MSBuildStringIsTrue(msbuildString);

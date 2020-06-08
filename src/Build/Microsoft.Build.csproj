@@ -37,6 +37,9 @@
     <PackageReference Include="System.Text.Json" />
 
     <PackageReference Include="System.Reflection.Metadata" Condition="'$(MonoBuild)' == 'true'" />
+
+    <PackageReference Include="Microsoft.VisualStudioEng.MicroBuild.Core" />
+    <PackageReference Include="System.Text.Json" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETFramework'">
@@ -149,6 +152,9 @@
     <Compile Include="..\Shared\VisualStudioLocationHelper.cs">
       <Link>SharedUtilities\VisualStudioLocationHelper.cs</Link>
     </Compile>
+
+    <Compile Include="BuildPrediction\**\*.cs" />
+
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="BackEnd\BuildManager\BuildManager.cs" />
     <Compile Include="BackEnd\BuildManager\BuildParameters.cs" />

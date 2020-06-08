@@ -2,6 +2,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
@@ -11,6 +12,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,6 +27,7 @@ using Microsoft.Build.Framework;
 using Microsoft.Build.Graph;
 using Microsoft.Build.Internal;
 using Microsoft.Build.Logging;
+using Microsoft.Build.Prediction;
 using Microsoft.Build.Shared;
 using Microsoft.Build.Shared.FileSystem;
 using ForwardingLoggerRecord = Microsoft.Build.Logging.ForwardingLoggerRecord;
@@ -1403,6 +1406,180 @@ namespace Microsoft.Build.Execution
             }
         }
 
+        private class ProjectCache
+        {
+            public CacheResponse Check(
+                ProjectGraphNode node,
+                ImmutableList<string> targetList,
+                ProjectPredictions projectPredictions
+            )
+            {
+                /*
+                 *  Not applicable if:
+                 * - build target is not requested
+                 * - empty inputs or output
+                 */
+
+                if (!targetList.Any(t => t.Equals("build", StringComparison.OrdinalIgnoreCase)))
+                {
+                    return new CacheResponse(ResponseType.CacheNotApplicable, node.ProjectInstance.FullPath, targetList, "entry targets do not contain target 'Build'");
+                }
+
+                /*
+                 * Fake cache hit on:
+                 * - outer builds called with build. They do not respect BuildProjectReferences and build their innerbuilds when the cache skipped them
+                 * - traversal projects
+                 */
+
+                if (IsOuterBuild(node))
+                {
+                    return new CacheResponse(ResponseType.CacheHit, node.ProjectInstance.FullPath, targetList, "outer builds called with the Build target get skipped");
+                }
+
+                if (IsTraversal(node))
+                {
+                    return new CacheResponse(ResponseType.CacheHit, node.ProjectInstance.FullPath, targetList, "traversal projects get skipped");
+                }
+
+                var inputsAreEmpty = !projectPredictions.InputFiles.Any();
+                var outputsAreEmpty = !projectPredictions.OutputFiles.Any();
+
+                if (inputsAreEmpty || outputsAreEmpty)
+                {
+                    var emptyInputsString = inputsAreEmpty
+                        ? "no inputs predicted"
+                        : null;
+
+                    var emptyOutputsString = outputsAreEmpty
+                        ? "no outputs predicted"
+                        : null;
+
+                    return new CacheResponse(ResponseType.CacheNotApplicable, node.ProjectInstance.FullPath, targetList, emptyInputsString, emptyOutputsString);
+                }
+
+                /*
+                 * Cache miss if:
+                 * - any input or output is missing
+                 * - most recent input happened after the least recent output
+                 */
+
+                var missingInputs = projectPredictions.InputFiles.Where(i => !File.Exists(i.Path));
+                var missingOutputs = projectPredictions.OutputFiles.Where(o => !File.Exists(o.Path));
+
+                var inputsAreMissing = missingInputs.Any();
+                var outputsAreMissing = missingOutputs.Any();
+
+                if (inputsAreMissing || outputsAreMissing)
+                {
+                    var missingInputsString = inputsAreMissing
+                        ? $"missing inputs: {string.Join(";", missingInputs.Select(i => i.Path))}"
+                        : null;
+
+                    var missingOutputsString = outputsAreMissing
+                        ? $"missing outputs: {string.Join(";", missingOutputs.Select(o => o.Path))}"
+                        : null;
+
+                    return new CacheResponse(ResponseType.CacheMiss, node.ProjectInstance.FullPath, targetList, missingInputsString, missingOutputsString);
+                }
+
+                var mostRecentInput = GetMaxMin(projectPredictions.InputFiles, (d1, d2) => d1 > d2);
+                var leastRecentOutput = GetMaxMin(projectPredictions.OutputFiles, (d1, d2) => d1 < d2);
+
+                if (mostRecentInput.LastWriteTimeUtc > leastRecentOutput.LastWriteTimeUtc)
+                {
+                    return new CacheResponse(ResponseType.CacheMiss, node.ProjectInstance.FullPath, targetList, $"input {mostRecentInput.PredictedItem.Path} ({mostRecentInput.LastWriteTimeUtc:u}) is newer than output {leastRecentOutput.PredictedItem.Path} ({leastRecentOutput.LastWriteTimeUtc:u})");
+                }
+
+                return new CacheResponse(ResponseType.CacheHit, node.ProjectInstance.FullPath, targetList, "");
+
+                static (DateTime LastWriteTimeUtc, PredictedItem PredictedItem) GetMaxMin(
+                    IReadOnlyCollection<PredictedItem> items,
+                    Func<DateTime, DateTime, bool> firstArgIsBetterThanSecondArg
+                ) =>
+                    items.Aggregate(
+                        (File.GetLastWriteTimeUtc(items.First().Path), items.First()),
+                        (accumulator, item) =>
+                        {
+                            var lastWriteTime = File.GetLastWriteTimeUtc(item.Path);
+
+                            return firstArgIsBetterThanSecondArg(lastWriteTime, accumulator.Item1)
+                                ? (lastWriteTime, item)
+                                : accumulator;
+                        }
+                    );
+            }
+
+            private bool IsOuterBuild(ProjectGraphNode node)
+            {
+                return ProjectInterpretation.MSBuildStringIsTrue(
+                    node.ProjectInstance.GetPropertyValue("IsCrossTargetingBuild"));
+            }
+
+            private bool IsTraversal(ProjectGraphNode node)
+            {
+                return
+                    (GetBoolPropertyValue(node, "UsingMicrosoftTraversalSdk") ||
+                     !string.IsNullOrEmpty(node.ProjectInstance.GetPropertyValue("TraversalTargets"))) &&
+                    GetBoolPropertyValue(node, "IsTraversal") &&
+                    GetBoolPropertyValue(node, "TraversalTranslateProjectFileItems", defaultValue: true);
+            }
+
+            private bool GetBoolPropertyValue(ProjectGraphNode node, string propName, bool defaultValue = false)
+            {
+                string prop = node.ProjectInstance.GetPropertyValue(propName);
+                if (string.IsNullOrWhiteSpace(prop))
+                {
+                    return defaultValue;
+                }
+
+                if (string.Equals(prop, "false", StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+
+                return true;
+            }
+
+            internal readonly struct CacheResponse
+            {
+                private string ProjectPath { get; }
+                private IEnumerable<string> TargetList { get; }
+                public ResponseType Type { get; }
+                private IEnumerable<string> Details { get; }
+
+                public CacheResponse(
+                    ResponseType type,
+                    string projectPath,
+                    IEnumerable<string> targetList,
+                    params string[] details
+                )
+                {
+                    ProjectPath = projectPath;
+                    TargetList = targetList;
+                    Type = type;
+                    Details = details.Where(d => d != null);
+                }
+
+                private static readonly string[] EmptyStringArray = {""};
+
+                public override string ToString()
+                {
+                    return string.Join(
+                        "\t\n",
+                        new[] {$"({Type}) {ProjectPath} ({string.Join(", ", TargetList)})"}
+                        .Concat(Details.Select(d => $"\t{d}"))
+                        .Concat(EmptyStringArray));
+                }
+            }
+
+            internal enum ResponseType
+            {
+                CacheNotApplicable,
+                CacheMiss,
+                CacheHit
+            }
+        }
+
         private void ExecuteGraphBuildScheduler(GraphBuildSubmission submission)
         {
             try
@@ -1454,7 +1631,25 @@ namespace Microsoft.Build.Execution
                 var blockedNodes = new HashSet<ProjectGraphNode>(projectGraph.ProjectNodes);
                 var finishedNodes = new HashSet<ProjectGraphNode>(projectGraph.ProjectNodes.Count);
                 var buildingNodes = new Dictionary<BuildSubmission, ProjectGraphNode>();
-                Dictionary<ProjectGraphNode, BuildResult> resultsPerNode = new Dictionary<ProjectGraphNode, BuildResult>(projectGraph.ProjectNodes.Count);
+
+                var resultsPerNode = new Dictionary<ProjectGraphNode, BuildResult>(projectGraph.ProjectNodes.Count);
+
+                var projectPredictors = new List<IProjectPredictor>();
+                projectPredictors.AddRange(ProjectPredictors.AllProjectPredictors);
+
+                var projectGraphPredictors = new List<IProjectGraphPredictor>();
+                projectGraphPredictors.AddRange(ProjectPredictors.AllProjectGraphPredictors);
+
+                var predictionExecutor = new ProjectGraphPredictionExecutor(projectGraphPredictors, projectPredictors);
+                var predictionCollector = predictionExecutor.PredictInputsAndOutputs(projectGraph);
+
+                var projectCache = new ProjectCache();
+
+                var cacheResults = new ConcurrentDictionary<ProjectCache.ResponseType, int>(
+                    Enum.GetValues(typeof(ProjectCache.ResponseType))
+                        .Cast<ProjectCache.ResponseType>()
+                        .ToDictionary(k => k, k => 0));
+                
                 while (blockedNodes.Count > 0 || buildingNodes.Count > 0)
                 {
                     waitHandle.WaitOne();
@@ -1464,6 +1659,7 @@ namespace Microsoft.Build.Execution
                         var unblockedNodes = blockedNodes
                             .Where(node => node.ProjectReferences.All(projectReference => finishedNodes.Contains(projectReference)))
                             .ToList();
+
                         foreach (var node in unblockedNodes)
                         {
                             var targetList = targetLists[node];
@@ -1476,6 +1672,31 @@ namespace Microsoft.Build.Execution
                                 waitHandle.Set();
 
                                 continue;
+                            }
+
+                            var cacheResponse = projectCache.Check(node, targetList, predictionCollector.PredictionsPerNode[node]);
+
+                            cacheResults.AddOrUpdate(
+                                cacheResponse.Type,
+                                k => 1,
+                                (key, currentCount) => currentCount + 1);
+
+                            LogMessage(cacheResponse.ToString());
+
+                            switch (cacheResponse.Type)
+                            {
+                                case ProjectCache.ResponseType.CacheNotApplicable:
+                                case ProjectCache.ResponseType.CacheMiss:
+                                    break;
+                                case ProjectCache.ResponseType.CacheHit:
+                                    finishedNodes.Add(node);
+                                    blockedNodes.Remove(node);
+
+                                    waitHandle.Set();
+
+                                    continue;
+                                default:
+                                    throw new ArgumentOutOfRangeException();
                             }
 
                             var request = new BuildRequestData(
@@ -1508,6 +1729,11 @@ namespace Microsoft.Build.Execution
                         }
                     }
                 }
+
+                LogMessage(
+                    string.Join(
+                        ", ",
+                        cacheResults.OrderBy(kvp => kvp.Key).Select(kvp => $"{kvp.Key}: {kvp.Value}")));
 
                 // The overall submission is complete, so report it as complete
                 ReportResultsToSubmission(new GraphBuildResult(submission.SubmissionId, new ReadOnlyDictionary<ProjectGraphNode, BuildResult>(resultsPerNode)));
@@ -2497,6 +2723,18 @@ namespace Microsoft.Build.Execution
                 CancelAndMarkAsFailure();
                 throw;
             }
+        }
+
+        private void LogMessage(string message)
+        {
+            var loggingService = ((IBuildComponentHost)this).LoggingService;
+
+            ErrorUtilities.VerifyThrowInternalNull(loggingService, nameof(loggingService));
+
+            loggingService.LogCommentFromText(
+                BuildEventContext.Invalid,
+                MessageImportance.High,
+                message);
         }
 
         private void LogErrorAndShutdown(string message)
